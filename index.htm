@@ -1,0 +1,893 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>POS · Toko Yakin</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
+  <style>
+    .product-row { transition: all 0.1s ease; }
+    .cart-scroll::-webkit-scrollbar { width: 5px; }
+    .cart-scroll::-webkit-scrollbar-track { background: #1f2937; border-radius: 10px; }
+    .cart-scroll::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 10px; }
+    .toggle-active {
+      background: #2563eb !important;
+      color: white !important;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    }
+    .loading-shimmer {
+      background: linear-gradient(90deg, #1f2937 0%, #374151 50%, #1f2937 100%);
+      background-size: 200% auto;
+      animation: shimmer 1.2s linear infinite;
+    }
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+    .product-table th, .product-table td {
+      transition: opacity 0.1s ease;
+    }
+    .remove-cart-btn {
+      transition: all 0.15s ease;
+    }
+    .toast-notify {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #1e293bdd;
+      backdrop-filter: blur(8px);
+      color: #bbf7d0;
+      padding: 8px 16px;
+      border-radius: 40px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      z-index: 999;
+      pointer-events: none;
+      border: 1px solid #2dd4bf40;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      transition: opacity 0.2s ease;
+    }
+  </style>
+</head>
+<body class="bg-gray-900 text-gray-100 antialiased min-h-screen">
+
+  <!-- main content (left, 60% width) -->
+  <div class="mr-[40%]">
+    <div class="p-6 pb-12">
+      <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+        <h1 class="text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-100 to-gray-300 bg-clip-text text-transparent">
+          Toko Yakin
+        </h1>
+        <!-- SHEET TOGGLE BUTTONS (Biasa / Grosir) - cart NOT cleared -->
+        <div class="bg-gray-800/60 border border-gray-700 rounded-xl p-1 shadow-md flex gap-1">
+          <button id="toggleBiasa" data-sheet="Biasa" class="sheet-toggle-btn px-5 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-blue-600 text-white shadow-sm">📄 Biasa</button>
+          <button id="toggleGrosir" data-sheet="Grosir" class="sheet-toggle-btn px-5 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-gray-700 text-gray-200 hover:bg-gray-600">📦 Grosir</button>
+        </div>
+      </div>
+
+      <div class="bg-gray-800/40 rounded-xl border border-gray-700/60 shadow-xl overflow-hidden">
+        <!-- search bar + bulk columns toggle control -->
+        <div class="p-4 border-b border-gray-700/50 bg-gray-800/30 flex flex-wrap items-center justify-between gap-3">
+          <div class="relative flex-1 min-w-[200px]">
+            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+            <input type="text" id="productSearchInput" placeholder="Search by barcode or name..."
+                   class="w-full bg-gray-900 border border-gray-600 rounded-lg py-2 pl-9 pr-4 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" autofocus>
+          </div>
+          <div class="flex items-center gap-2">
+            <span id="searchResultCount" class="text-xs text-gray-400 bg-gray-800/60 px-2.5 py-1 rounded-full">All products</span>
+            <button id="clearSearchBtn" class="text-xs text-gray-400 hover:text-white bg-gray-700/50 hover:bg-gray-600 px-3 py-1.5 rounded-md transition flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+              Clear
+            </button>
+            <button id="toggleBulkColumnsBtn" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-700 hover:bg-gray-600 transition flex items-center gap-1 shadow-sm">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+              <span id="bulkToggleLabel">Show Bulk Columns</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- product table (dynamic) -->
+        <div class="overflow-x-auto">
+          <table class="product-table w-full text-sm border-collapse">
+            <thead class="bg-gray-800 border-b border-gray-700">
+              <tr class="text-left text-gray-300 font-semibold">
+                <th class="px-4 py-3">Barcode</th><th class="px-4 py-3">Name</th><th class="px-4 py-3">Category</th>
+                <th class="px-4 py-3">Single Price</th><th class="px-4 py-3 bulk-col">Min (B1)</th><th class="px-4 py-3 bulk-col">Bulk 1 (total)</th>
+                <th class="px-4 py-3 bulk-col">Min (B2)</th><th class="px-4 py-3 bulk-col">Bulk 2 (total)</th><th class="px-4 py-3 bulk-col">Min (B3)</th>
+                <th class="px-4 py-3 bulk-col">Bulk 3 (total)</th><th class="px-4 py-3">Qty</th><th class="px-4 py-3">Action</th>
+              </tr>
+            </thead>
+            <tbody id="productTable" class="divide-y divide-gray-800/70 bg-gray-900/50"></tbody>
+          </table>
+          <div id="productLoadingMsg" class="hidden text-center py-8 text-gray-400 italic">Loading products...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- fixed cart sidebar (40% width) with REMOVE (X) BUTTON column -->
+  <div class="fixed top-0 right-0 w-[40%] h-full bg-gray-800/95 backdrop-blur-sm border-l border-gray-700 shadow-2xl flex flex-col z-20">
+    <div class="px-5 pt-6 pb-3 border-b border-gray-700/80">
+      <h2 class="text-xl font-bold flex items-center gap-2">
+        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M12 15v6" />
+        </svg>
+        Shopping Cart
+      </h2>
+      <p class="text-xs text-gray-400 mt-1">Stackable bulk packs + singles (best discount) | <span id="activeSheetBadge" class="text-blue-300 font-mono">Biasa</span></p>
+      <p class="text-xs text-gray-500 mt-0.5">✨ Cart persists when toggling sheets &nbsp;|&nbsp; ❌ 'X' button removes item | 🔍 <kbd class="px-1 bg-gray-700 rounded text-xs">Enter</kbd> = add first search result</p>
+    </div>
+
+    <div class="flex-1 overflow-y-auto px-4 py-3 cart-scroll">
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm border-collapse">
+          <thead class="bg-gray-700/60 sticky top-0 z-10 backdrop-blur-sm">
+            <tr class="text-left text-gray-200 font-semibold text-xs uppercase tracking-wider">
+              <th class="px-2 py-2.5">Barcode</th>
+              <th class="px-2 py-2.5">Name</th>
+              <th class="px-2 py-2.5 text-center">Qty</th>
+              <th class="px-2 py-2.5">Unit</th>
+              <th class="px-2 py-2.5">Subtotal</th>
+              <th class="px-2 py-2.5 text-center">Info</th>
+              <th class="px-2 py-2.5 text-center">Act</th>
+            </tr>
+          </thead>
+          <tbody id="cart" class="divide-y divide-gray-700/50"></tbody>
+        </table>
+      </div>
+      <div id="emptyCartMsg" class="text-center text-gray-500 py-8 text-sm hidden">Cart is empty — add products</div>
+    </div>
+
+    <div class="border-t border-gray-700/80 p-5 bg-gray-800/90 flex-shrink-0">
+      <div class="flex justify-between items-center mb-4 text-base font-bold">
+        <span class="text-gray-300">Total</span>
+        <span id="total" class="text-2xl font-extrabold text-emerald-400 tracking-tight">Rp. 0.00</span>
+      </div>
+      <button id="checkout" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-2.5 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+        CheckOut
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // ---------- GLOBALS ----------
+    let cart = [];
+    let products = {};          // barcode -> product info (current active sheet)
+    let currentSearchTerm = "";
+    let currentActiveSheet = "Biasa";
+    let isLoading = false;
+    let showBulkColumns = false;    // DEFAULT = HIDDEN (bulk columns invisible)
+
+    const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNgrO1HT1fanpNDiFtL9RQazcVeDJ4M1RuxJx-I9tBk_ycFqYUoDj8I6ZCnQKBIwxBRHjnhP_0_Kge/pub?output=xlsx";
+
+    // ---------- HELPER: escape ----------
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+      });
+    }
+
+    // ---------- get effective visible column count (based on bulk toggle) ----------
+    function getVisibleColumnCount() {
+      const totalCols = 12;        // Barcode,Name,Category,Single,6 bulk cols, Qty, Action
+      const bulkHiddenCols = 6;
+      return showBulkColumns ? totalCols : totalCols - bulkHiddenCols;
+    }
+
+    // ---------- APPLY COLUMN VISIBILITY (hide/show bulk columns: indices 4,5,6,7,8,9) ----------
+    function applyColumnVisibility() {
+      const table = document.querySelector(".product-table");
+      if (!table) return;
+
+      const theadRows = table.querySelectorAll("thead tr");
+      theadRows.forEach(row => {
+        const thCells = row.querySelectorAll("th");
+        thCells.forEach((th, idx) => {
+          if (idx >= 4 && idx <= 9) {
+            th.style.display = showBulkColumns ? "table-cell" : "none";
+          } else {
+            th.style.display = "table-cell";
+          }
+        });
+      });
+
+      const tbody = document.getElementById("productTable");
+      if (tbody) {
+        const rows = tbody.querySelectorAll("tr");
+        rows.forEach(row => {
+          const cells = row.querySelectorAll("td");
+          cells.forEach((cell, idx) => {
+            if (idx >= 4 && idx <= 9) {
+              cell.style.display = showBulkColumns ? "table-cell" : "none";
+            } else {
+              cell.style.display = "table-cell";
+            }
+          });
+        });
+      }
+
+      const noResultRow = document.querySelector(".no-results-row");
+      if (noResultRow) {
+        const visibleCols = getVisibleColumnCount();
+        noResultRow.setAttribute("colspan", visibleCols);
+      }
+    }
+
+    // ---------- STACKABLE BULK PRICING (snapshot data) ----------
+    function computeStackablePriceFromSnapshot(singlePrice, tiers, qty) {
+      if (qty <= 0) return { total: 0, breakdown: [] };
+      let remaining = qty;
+      let total = 0;
+      let breakdown = [];
+
+      const tiersWithEfficiency = tiers.map(tier => ({
+        ...tier,
+        effUnit: tier.totalPrice / tier.min
+      }));
+      tiersWithEfficiency.sort((a, b) => a.effUnit - b.effUnit);
+
+      for (const tier of tiersWithEfficiency) {
+        if (remaining >= tier.min) {
+          const maxPacks = Math.floor(remaining / tier.min);
+          if (maxPacks > 0) {
+            const unitsCovered = maxPacks * tier.min;
+            const priceForPacks = maxPacks * tier.totalPrice;
+            total += priceForPacks;
+            remaining -= unitsCovered;
+            breakdown.push({
+              type: 'bulk',
+              minQty: tier.min,
+              totalPricePerPack: tier.totalPrice,
+              packs: maxPacks,
+              units: unitsCovered,
+              subtotal: priceForPacks,
+              effectiveUnit: tier.effUnit
+            });
+          }
+        }
+      }
+
+      if (remaining > 0) {
+        const singlesTotal = remaining * singlePrice;
+        total += singlesTotal;
+        breakdown.push({
+          type: 'single',
+          qty: remaining,
+          unitPrice: singlePrice,
+          subtotal: singlesTotal
+        });
+      }
+      return { total, breakdown };
+    }
+
+    // ---------- RENDER PRODUCT ROW (dynamic row creation) ----------
+    function addProductRowToDOM(barcode, name, category, singlePrice, min1, total1, min2, total2, min3, total3) {
+      const tbody = document.getElementById("productTable");
+      if (!tbody) return;
+      const tr = document.createElement("tr");
+      tr.className = "product-row hover:bg-gray-800/40 transition-colors";
+      const fmtPrice = (val) => (val && !isNaN(val) && val > 0) ? `Rp. ${val.toFixed(2)}` : '-';
+      tr.innerHTML = `
+        <td class="px-4 py-2.5 font-mono text-xs">${escapeHtml(barcode)}</td>
+        <td class="px-4 py-2.5 font-medium">${escapeHtml(name)}</td>
+        <td class="px-4 py-2.5 text-gray-300">${escapeHtml(category)}</td>
+        <td class="px-4 py-2.5 font-mono text-emerald-300">Rp. ${singlePrice.toFixed(2)}</td>
+        <td class="px-4 py-2.5 bulk-col">${min1 || '-'}</td>
+        <td class="px-4 py-2.5 font-mono text-blue-300 text-xs bulk-col">${fmtPrice(total1)}</td>
+        <td class="px-4 py-2.5 bulk-col">${min2 || '-'}</td>
+        <td class="px-4 py-2.5 font-mono text-blue-300 text-xs bulk-col">${fmtPrice(total2)}</td>
+        <td class="px-4 py-2.5 bulk-col">${min3 || '-'}</td>
+        <td class="px-4 py-2.5 font-mono text-blue-300 text-xs bulk-col">${fmtPrice(total3)}</td>
+        <td class="px-4 py-2.5">
+          <input type="number" min="1" value="1" class="qty-input w-20 px-2 py-1.5 bg-gray-800 border border-gray-600 rounded-md text-white focus:ring-1 focus:ring-blue-500 outline-none" />
+        </td>
+        <td class="px-4 py-2.5">
+          <button class="add-btn bg-green-700 hover:bg-green-600 text-white text-sm px-3 py-1.5 rounded-lg shadow-md transition flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+            Add
+          </button>
+        </td>
+      `;
+      const addBtn = tr.querySelector(".add-btn");
+      const qtyInput = tr.querySelector(".qty-input");
+      addBtn.addEventListener("click", () => {
+        let qty = parseInt(qtyInput.value);
+        if (isNaN(qty) || qty < 1) qty = 1;
+        const prod = products[barcode];
+        if (prod) {
+          addToCartWithSnapshot(prod, qty);
+          showTemporaryToast(`➕ Added ${qty}x ${prod.name} to cart`);
+        } else {
+          console.warn("Product not found");
+        }
+      });
+      tbody.appendChild(tr);
+    }
+
+    // ---------- ADD TO CART (maintain snapshot) ----------
+    function addToCartWithSnapshot(productData, qty = 1) {
+      const existingIndex = cart.findIndex(i => i.barcode === productData.barcode);
+      if (existingIndex !== -1) {
+        cart[existingIndex].qty += qty;
+      } else {
+        const tiersCopy = productData.tiers.map(t => ({ ...t }));
+        cart.push({
+          barcode: productData.barcode,
+          name: productData.name,
+          singlePrice: productData.singlePrice,
+          tiers: tiersCopy,
+          qty: qty
+        });
+      }
+      renderCart();
+    }
+
+    // ---------- RENDER CART (INCLUDES REMOVE X BUTTON) ----------
+    function renderCart() {
+      const cartTbody = document.getElementById("cart");
+      const emptyMsg = document.getElementById("emptyCartMsg");
+      if (!cartTbody) return;
+      cartTbody.innerHTML = "";
+      let overallTotal = 0;
+      if (cart.length === 0) {
+        if (emptyMsg) emptyMsg.classList.remove("hidden");
+        document.getElementById("total").textContent = `Rp. 0.00`;
+        return;
+      }
+      if (emptyMsg) emptyMsg.classList.add("hidden");
+
+      for (let idx = 0; idx < cart.length; idx++) {
+        const item = cart[idx];
+        const { total: subtotal, breakdown } = computeStackablePriceFromSnapshot(item.singlePrice, item.tiers, item.qty);
+        overallTotal += subtotal;
+
+        let detailLines = [];
+        for (const part of breakdown) {
+          if (part.type === 'bulk') {
+            const perUnit = part.effectiveUnit.toFixed(2);
+            detailLines.push(`📦 ${part.packs} x BULK (${part.minQty} pcs) @ Rp. ${part.totalPricePerPack.toFixed(2)}/pack → total Rp. ${part.subtotal.toFixed(2)} (≈Rp. ${perUnit}/ea)`);
+          } else if (part.type === 'single') {
+            detailLines.push(`✨ ${part.qty} x SINGLE @ Rp. ${part.unitPrice.toFixed(2)} = Rp. ${part.subtotal.toFixed(2)}`);
+          }
+        }
+
+        const tr = document.createElement("tr");
+        tr.className = "border-b border-gray-700/50 hover:bg-gray-700/30 transition";
+        tr.innerHTML = `
+          <td class="px-2 py-2.5 font-mono text-xs text-gray-300">${escapeHtml(item.barcode)}</td>
+          <td class="px-2 py-2.5 font-medium text-gray-200">${escapeHtml(item.name)}</td>
+          <td class="px-2 py-2.5 text-center">
+            <div class="inline-flex items-center gap-1 bg-gray-700/50 rounded-lg shadow-inner">
+              <button class="decrease w-7 h-7 rounded-l-lg bg-gray-700 hover:bg-gray-600 text-white font-bold text-sm">−</button>
+              <span class="w-8 text-center text-sm font-semibold">${item.qty}</span>
+              <button class="increase w-7 h-7 rounded-r-lg bg-gray-700 hover:bg-gray-600 text-white font-bold text-sm">+</button>
+            </div>
+          </td>
+          <td class="px-2 py-2.5 text-xs text-emerald-300 font-mono">Rp. ${item.singlePrice.toFixed(2)}</td>
+          <td class="px-2 py-2.5 font-mono text-emerald-400 font-semibold">Rp. ${subtotal.toFixed(2)}</td>
+          <td class="px-2 py-2.5 text-center">
+            <button class="details-btn bg-gray-700/80 hover:bg-gray-600 text-white rounded-md px-2 py-1 text-xs transition-colors shadow-sm">📋 Details</button>
+          </td>
+          <td class="px-2 py-2.5 text-center">
+            <button class="remove-cart-btn bg-red-800/70 hover:bg-red-700 text-white rounded-md w-7 h-7 flex items-center justify-center text-sm font-bold transition shadow-sm" title="Remove item from cart">✖</button>
+          </td>
+        `;
+
+        const incBtn = tr.querySelector(".increase");
+        const decBtn = tr.querySelector(".decrease");
+        incBtn.addEventListener("click", () => {
+          cart[idx].qty++;
+          renderCart();
+        });
+        decBtn.addEventListener("click", () => {
+          if (cart[idx].qty <= 1) {
+            cart.splice(idx, 1);
+          } else {
+            cart[idx].qty--;
+          }
+          renderCart();
+        });
+
+        const detailsBtn = tr.querySelector(".details-btn");
+        detailsBtn.addEventListener("click", () => {
+          alert(`🧾 PRICE BREAKDOWN — ${item.name} (QTY: ${item.qty})\n\n${detailLines.join("\n")}\n────────────────\n💰 SUBTOTAL: Rp. ${subtotal.toFixed(2)}`);
+        });
+
+        const removeBtn = tr.querySelector(".remove-cart-btn");
+        removeBtn.addEventListener("click", () => {
+          cart.splice(idx, 1);
+          renderCart();
+        });
+
+        cartTbody.appendChild(tr);
+      }
+      document.getElementById("total").textContent = `Rp. ${overallTotal.toFixed(2)}`;
+    }
+
+    function clearCart() {
+      cart = [];
+      renderCart();
+    }
+
+    // ---------- PRINT RECEIPT with DIV-BASED LAYOUT (no tables, 58mm thermal friendly) ----------
+    function showThermalReceipt() {
+      if (cart.length === 0) {
+        alert("🛒 Cart is empty. Nothing to print.");
+        return;
+      }
+
+      // Compute totals per item and overall
+      const receiptItems = [];
+      let grandTotal = 0;
+      for (const item of cart) {
+        const { total: subtotal } = computeStackablePriceFromSnapshot(item.singlePrice, item.tiers, item.qty);
+        grandTotal += subtotal;
+        receiptItems.push({
+          name: item.name,
+          qty: item.qty,
+          subtotal: subtotal
+        });
+      }
+
+      const now = new Date();
+      const dateStr = now.toLocaleDateString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' });
+      const timeStr = now.toLocaleTimeString('id-ID', { hour:'2-digit', minute:'2-digit' });
+
+      const printHtml = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="UTF-8">
+          <title>Print Receipt</title>
+          <style>
+            @media print {
+              @page {
+                margin: 0 6px 0 0;
+              }
+              body {
+                padding: 2cm;
+              }
+            }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+              font-family: 'Courier New', 'Courier', monospace;
+              font-size: 10px;
+              width: 58mm;
+              margin: 0 auto;
+              padding: 2mm 1.5mm;
+              background: white;
+              color: black;
+            }
+            .receipt {
+              width: 100%;
+            }
+            .store-name {
+              text-align: center;
+              font-size: 16px;
+              font-weight: bold;
+              letter-spacing: 1px;
+              margin-bottom: 3px;
+              border-bottom: 1px dashed #222;
+              padding-bottom: 3px;
+            }
+            .store-tag {
+              text-align: center;
+              font-size: 8px;
+              margin-bottom: 6px;
+              color: #333;
+            }
+            .divider {
+              border-top: 1px dashed #222;
+              margin: 5px 0;
+            }
+            .print-date {
+              text-align: center;
+              margin-bottom: 5px;
+            }
+            .receipt {
+              font-size: 12px;
+              font-weight: bold;
+            }
+            /* header row for items (Name, Qty, Subtotal) using flex */
+            .receipt-header {
+              display: flex;
+              justify-content: space-between;
+              border-bottom: 1px dotted #222;
+              padding: 4px 0 2px;
+              margin-bottom: 4px;
+            }
+            .receipt-item {
+              display: flex;
+              justify-content: space-between;
+              align-items: baseline;
+              margin-bottom: 4px;
+              line-height: 1.25;
+            }
+            .item-name {
+              flex: 2;
+              word-break: break-word;
+              padding-right: 4px;
+            }
+            .item-qty {
+              flex: 0.6;
+              text-align: center;
+            }
+            .item-price {
+              flex: 1.2;
+              text-align: right;
+              white-space: nowrap;
+              margin-right: 8px;
+              font-weight: semibold;
+            }
+            .total-row {
+              margin-top: 6px;
+              border-top: 1px dashed #222;
+              font-weight: bold;
+              font-size: 15px;
+              display: flex;
+              justify-content: space-between;
+              padding: 5px 2px 2px;
+            }
+            .footer {
+              text-align: center;
+              font-size: 8px;
+              margin-top: 8px;
+              border-top: 1px dashed #222;
+              padding-top: 5px;
+            }
+            @media print {
+              body { margin: 0; padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="receipt">
+            <div class="store-name">TOKO YAKIN</div>
+            <div class="store-tag">✦ Grosir dan Eceran ✦</div>
+            <div class="store-tag">Jl. Ciseupan no 68</div>
+            <div class="store-tag">081312419920</div>
+            <div class="print-date">${dateStr}  •  ${timeStr}</div>
+            <div class="divider"></div>
+
+            <!-- Header row (labels) -->
+            <div class="receipt-header">
+              <span class="item-name">Item</span>
+              <span class="item-qty">Qty</span>
+              <span class="item-price">Sub</span>
+            </div>
+
+            <!-- Dynamic items list (div-based) -->
+            ${receiptItems.map(item => `
+              <div class="receipt-item">
+                <span class="item-name">${escapeHtml(item.name)}</span>
+                <span class="item-qty">${item.qty}</span>
+                <div class="item-price">Rp${item.subtotal}</div>
+              </div>
+            `).join('')}
+
+            <div class="total-row">
+              <span>TOTAL</span>
+              <div style="margin-right: 4px">Rp${grandTotal}</div>
+            </div>
+            <div class="footer">
+              🧾 Terima kasih!<br/>
+              Simpan struk ini sebagai bukti
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(() => { window.close(); }, 800);
+            };
+          <\/script>
+        </body>
+        </html>
+      `;
+
+      const printWindow = window.open('', '_blank', 'width=400,height=600,toolbar=no,menubar=no,scrollbars=yes');
+      if (printWindow) {
+        printWindow.document.write(printHtml);
+        printWindow.document.close();
+      } else {
+        alert("⚠️ Popup blocked! Please allow popups for this site to print receipt.");
+      }
+    }
+
+    // ---------- SEARCH & FILTER ----------
+    function applyProductFilter() {
+      const searchInput = document.getElementById("productSearchInput");
+      const term = searchInput ? searchInput.value.trim() : "";
+      currentSearchTerm = term;
+      const tbody = document.getElementById("productTable");
+      if (!tbody) return;
+      const rows = Array.from(tbody.querySelectorAll("tr.product-row"));
+      let visibleCount = 0;
+      const existingNoResult = tbody.querySelector(".no-results-row");
+      if (existingNoResult) existingNoResult.remove();
+
+      if (term === "") {
+        rows.forEach(row => { row.style.display = ""; visibleCount++; });
+        updateSearchCountUI(visibleCount, rows.length);
+        applyColumnVisibility();
+        return;
+      }
+      const lowerTerm = term.toLowerCase();
+      rows.forEach(row => {
+        const cells = row.querySelectorAll("td");
+        if (cells.length >= 2) {
+          const barcode = cells[0]?.innerText?.toLowerCase() || "";
+          const pname = cells[1]?.innerText?.toLowerCase() || "";
+          const matches = barcode.includes(lowerTerm) || pname.includes(lowerTerm);
+          row.style.display = matches ? "" : "none";
+          if (matches) visibleCount++;
+        } else row.style.display = "none";
+      });
+
+      if (visibleCount === 0 && rows.length > 0) {
+        const visibleColspan = getVisibleColumnCount();
+        const noResultRow = document.createElement("tr");
+        noResultRow.className = "no-results-row bg-gray-800/40";
+        noResultRow.innerHTML = `<td colspan="${visibleColspan}" class="text-center py-10 text-gray-400 italic">🔍 No products match "${escapeHtml(term)}"</td>`;
+        tbody.appendChild(noResultRow);
+      }
+      updateSearchCountUI(visibleCount, rows.length);
+      applyColumnVisibility();
+    }
+
+    function updateSearchCountUI(visible, total) {
+      const span = document.getElementById("searchResultCount");
+      if (span) {
+        if (currentSearchTerm === "") span.textContent = `All (${total})`;
+        else span.textContent = `${visible} / ${total} found`;
+      }
+    }
+
+    function clearSearch() {
+      const inp = document.getElementById("productSearchInput");
+      if (inp) { inp.value = ""; applyProductFilter(); inp.focus(); }
+    }
+
+    function showTemporaryToast(message) {
+      let toast = document.querySelector('.toast-notify');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.className = 'toast-notify';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = message;
+      toast.style.opacity = '1';
+      setTimeout(() => {
+        toast.style.opacity = '0';
+      }, 1800);
+    }
+
+    function addFirstVisibleProduct() {
+      if (isLoading) {
+        showTemporaryToast("⏳ Loading products, please wait...");
+        return;
+      }
+      const tbody = document.getElementById("productTable");
+      if (!tbody) return;
+      const rows = Array.from(tbody.querySelectorAll("tr.product-row"));
+      const visibleRows = rows.filter(row => {
+        const style = window.getComputedStyle(row);
+        return style.display !== "none";
+      });
+      if (visibleRows.length === 0) {
+        showTemporaryToast("⚠️ No matching products. Adjust your search.");
+        return;
+      }
+      const firstRow = visibleRows[0];
+      const addButton = firstRow.querySelector(".add-btn");
+      if (addButton) {
+        addButton.click();
+        const nameCell = firstRow.querySelector("td:nth-child(2)");
+        const productName = nameCell ? nameCell.innerText : "item";
+        showTemporaryToast(`✨ [ENTER] Added "${productName}" to cart`);
+      } else {
+        showTemporaryToast("❌ Could not add item, action missing.");
+      }
+    }
+
+    function initSearchEvents() {
+      const inp = document.getElementById("productSearchInput");
+      const btn = document.getElementById("clearSearchBtn");
+      if (inp) {
+        inp.addEventListener("input", applyProductFilter);
+        inp.addEventListener("keydown", (e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            addFirstVisibleProduct();
+            inp.value = '';
+            applyProductFilter();
+          }
+        });
+      }
+      if (btn) btn.addEventListener("click", clearSearch);
+    }
+
+    function setupBulkToggle() {
+      const toggleBtn = document.getElementById("toggleBulkColumnsBtn");
+      const labelSpan = document.getElementById("bulkToggleLabel");
+      if (!toggleBtn) return;
+      const updateToggleUI = () => {
+        if (labelSpan) {
+          labelSpan.innerText = showBulkColumns ? "Hide Bulk Columns" : "Show Bulk Columns";
+        }
+      };
+      updateToggleUI();
+      toggleBtn.addEventListener("click", () => {
+        showBulkColumns = !showBulkColumns;
+        updateToggleUI();
+        applyColumnVisibility();
+        const noRoot = document.querySelector(".no-results-row");
+        if (noRoot) {
+          const newColspan = getVisibleColumnCount();
+          noRoot.setAttribute("colspan", newColspan);
+        }
+      });
+    }
+
+    async function loadSheet(sheetName) {
+      if (isLoading) return;
+      isLoading = true;
+      const tbody = document.getElementById("productTable");
+      const loadingMsgDiv = document.getElementById("productLoadingMsg");
+      if (tbody) tbody.innerHTML = '<tr class="loading-shimmer"><td colspan="12" class="h-24 text-center text-gray-400 italic">Loading products from sheet "'+sheetName+'" ...</td></tr>';
+      if (loadingMsgDiv) loadingMsgDiv.classList.remove("hidden");
+
+      try {
+        const response = await fetch(GOOGLE_SHEET_URL);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const arrayBuffer = await response.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const sheet = workbook.Sheets[sheetName];
+        if (!sheet) throw new Error(`Sheet "${sheetName}" not found`);
+
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+        if (!rows || rows.length < 2) throw new Error(`No data rows in sheet "${sheetName}"`);
+        let dataRows = rows;
+        const firstRow = rows[0];
+        const isHeaderRow = firstRow && firstRow.some(cell =>
+          typeof cell === 'string' &&
+          (cell.toLowerCase().includes('barcode') || cell.toLowerCase().includes('name') || cell.toLowerCase().includes('category'))
+        );
+        if (isHeaderRow) dataRows = rows.slice(1);
+
+        products = {};
+        if (tbody) tbody.innerHTML = "";
+
+        let productCount = 0;
+        for (const row of dataRows) {
+          if (!row || row.length < 4) continue;
+          const barcode = (row[0] || "").toString().trim();
+          const name = (row[1] || "").toString().trim();
+          const category = (row[2] || "").toString().trim();
+          const singlePrice = parseFloat(row[3]) || 0;
+          if (!barcode || singlePrice <= 0) continue;
+
+          const min1 = parseInt(row[4]) || 0;
+          const total1 = parseFloat(row[5]) || 0;
+          const min2 = parseInt(row[6]) || 0;
+          const total2 = parseFloat(row[7]) || 0;
+          const min3 = parseInt(row[8]) || 0;
+          const total3 = parseFloat(row[9]) || 0;
+
+          const tiers = [];
+          if (min1 > 0 && total1 > 0) tiers.push({ min: min1, totalPrice: total1 });
+          if (min2 > 0 && total2 > 0) tiers.push({ min: min2, totalPrice: total2 });
+          if (min3 > 0 && total3 > 0) tiers.push({ min: min3, totalPrice: total3 });
+
+          products[barcode] = { barcode, name, category, singlePrice, tiers };
+          addProductRowToDOM(barcode, name, category, singlePrice, min1, total1, min2, total2, min3, total3);
+          productCount++;
+        }
+
+        if (productCount === 0) throw new Error(`No valid products found in sheet "${sheetName}"`);
+
+        currentActiveSheet = sheetName;
+        document.getElementById("activeSheetBadge").innerText = sheetName;
+
+        document.querySelectorAll(".sheet-toggle-btn").forEach(btn => {
+          const sheetAttr = btn.getAttribute("data-sheet");
+          if (sheetAttr === sheetName) {
+            btn.classList.add("bg-blue-600", "text-white");
+            btn.classList.remove("bg-gray-700", "text-gray-200", "hover:bg-gray-600");
+          } else {
+            btn.classList.remove("bg-blue-600", "text-white");
+            btn.classList.add("bg-gray-700", "text-gray-200", "hover:bg-gray-600");
+          }
+        });
+
+        const searchInput = document.getElementById("productSearchInput");
+        if (searchInput) searchInput.value = "";
+        applyProductFilter();
+        applyColumnVisibility();
+      } catch (err) {
+        console.error(`Failed to load sheet "${sheetName}":`, err);
+        if (tbody) {
+          tbody.innerHTML = `<tr class="bg-red-900/20"><td colspan="12" class="text-center py-12 text-red-300">
+            <div class="flex flex-col items-center gap-2">
+              <svg class="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+              <span>⚠️ Failed to load sheet "${escapeHtml(sheetName)}": ${err.message}</span>
+              <span class="text-xs text-gray-400">Check sheet name or data structure</span>
+            </div>
+          </td></tr>`;
+        }
+      } finally {
+        isLoading = false;
+        if (loadingMsgDiv) loadingMsgDiv.classList.add("hidden");
+      }
+    }
+
+    function insertFallbackDemoForSheet() {
+      const fallback = [
+        ["APPLE01", "Apple (Fresh)", "Fruits", "1.00", "5", "3.00", "10", "5.00", "100", "50.00"],
+        ["COF001", "Espresso", "Coffee", "3.50", "2", "6.00", "5", "14.00", "10", "25.00"],
+        ["BLK415", "Muffin", "Pastry", "2.50", "2", "4.00", "4", "7.00", "8", "12.00"]
+      ];
+      const tbody = document.getElementById("productTable");
+      if (tbody) tbody.innerHTML = "";
+      products = {};
+      fallback.forEach(cols => {
+        const [barcode, name, cat, single, m1, t1, m2, t2, m3, t3] = cols.map(c => c.trim());
+        const singlePrice = parseFloat(single) || 0;
+        const tiers = [];
+        if (parseInt(m1) > 0 && parseFloat(t1) > 0) tiers.push({ min: parseInt(m1), totalPrice: parseFloat(t1) });
+        if (parseInt(m2) > 0 && parseFloat(t2) > 0) tiers.push({ min: parseInt(m2), totalPrice: parseFloat(t2) });
+        if (parseInt(m3) > 0 && parseFloat(t3) > 0) tiers.push({ min: parseInt(m3), totalPrice: parseFloat(t3) });
+        products[barcode] = { barcode, name, category: cat, singlePrice, tiers };
+        addProductRowToDOM(barcode, name, cat, singlePrice, m1, parseFloat(t1), m2, parseFloat(t2), m3, parseFloat(t3));
+      });
+      currentActiveSheet = "Demo (Fallback)";
+      document.getElementById("activeSheetBadge").innerText = currentActiveSheet;
+      applyProductFilter();
+      applyColumnVisibility();
+    }
+
+    async function initialize() {
+      initSearchEvents();
+      setupBulkToggle();
+      try {
+        await loadSheet("Biasa");
+        if (Object.keys(products).length === 0) throw new Error("No products");
+      } catch (e) {
+        console.warn("Real sheet load failed, using fallback demo", e);
+        insertFallbackDemoForSheet();
+      }
+      applyColumnVisibility();
+
+      const checkoutBtn = document.getElementById("checkout");
+      if (checkoutBtn) {
+        checkoutBtn.addEventListener("click", (e) => {
+          e.preventDefault();
+          showThermalReceipt();   // print preview, cart is NOT cleared
+        });
+      }
+
+      const btnBiasa = document.getElementById("toggleBiasa");
+      const btnGrosir = document.getElementById("toggleGrosir");
+      if (btnBiasa) btnBiasa.addEventListener("click", () => { if (!isLoading && currentActiveSheet !== "Biasa") loadSheet("Biasa"); });
+      if (btnGrosir) btnGrosir.addEventListener("click", () => { if (!isLoading && currentActiveSheet !== "Grosir") loadSheet("Grosir"); });
+    }
+
+    initialize();
+  </script>
+</body>
+</html>
