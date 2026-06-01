@@ -122,9 +122,11 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M12 15v6" />
         </svg>
         Shopping Cart
+        <button id="clearCartBtn" class="ml-auto text-xs font-normal text-red-400 hover:text-red-300 bg-gray-700/50 hover:bg-red-900/50 px-2.5 py-1 rounded-md transition flex items-center gap-1">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+          Clear
+        </button>
       </h2>
-      <p class="text-xs text-gray-400 mt-1">Stackable bulk packs + singles (best discount) | <span id="activeSheetBadge" class="text-blue-300 font-mono">Biasa</span></p>
-      <p class="text-xs text-gray-500 mt-0.5">✨ Cart persists when toggling sheets &nbsp;|&nbsp; ❌ 'X' button removes item | 🔍 <kbd class="px-1 bg-gray-700 rounded text-xs">Enter</kbd> = add first search result</p>
     </div>
 
     <div class="flex-1 overflow-y-auto px-4 py-3 cart-scroll">
@@ -348,6 +350,7 @@
       if (cart.length === 0) {
         if (emptyMsg) emptyMsg.classList.remove("hidden");
         document.getElementById("total").textContent = `Rp. 0.00`;
+        saveCart();
         return;
       }
       if (emptyMsg) emptyMsg.classList.add("hidden");
@@ -418,6 +421,19 @@
         cartTbody.appendChild(tr);
       }
       document.getElementById("total").textContent = `Rp. ${overallTotal.toFixed(2)}`;
+      saveCart();
+    }
+
+    function saveCart() {
+      localStorage.setItem('toko-cart', JSON.stringify(cart));
+    }
+
+    function loadCart() {
+      const saved = localStorage.getItem('toko-cart');
+      if (saved) {
+        try { cart = JSON.parse(saved); } catch (e) { cart = []; }
+      }
+      renderCart();
     }
 
     function clearCart() {
@@ -802,8 +818,6 @@
         if (productCount === 0) throw new Error(`No valid products found in sheet "${sheetName}"`);
 
         currentActiveSheet = sheetName;
-        document.getElementById("activeSheetBadge").innerText = sheetName;
-
         document.querySelectorAll(".sheet-toggle-btn").forEach(btn => {
           const sheetAttr = btn.getAttribute("data-sheet");
           if (sheetAttr === sheetName) {
@@ -856,7 +870,6 @@
         addProductRowToDOM(barcode, name, cat, singlePrice, m1, parseFloat(t1), m2, parseFloat(t2), m3, parseFloat(t3));
       });
       currentActiveSheet = "Demo (Fallback)";
-      document.getElementById("activeSheetBadge").innerText = currentActiveSheet;
       applyProductFilter();
       applyColumnVisibility();
     }
@@ -864,6 +877,14 @@
     async function initialize() {
       initSearchEvents();
       setupBulkToggle();
+      loadCart();
+      document.getElementById("clearCartBtn")?.addEventListener("click", () => {
+        if (cart.length === 0) return;
+        if (confirm("Clear all items from cart?")) {
+          clearCart();
+          showTemporaryToast("🗑️ Cart cleared");
+        }
+      });
       try {
         await loadSheet("Biasa");
         if (Object.keys(products).length === 0) throw new Error("No products");
