@@ -197,6 +197,7 @@
     let isLoading = false;
     let showBulkColumns = false;    // DEFAULT = HIDDEN (bulk columns invisible)
     let cartOpen = false;
+    let cachedSheetData = null;     // synced xlsx data (Uint8Array)
 
     const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNgrO1HT1fanpNDiFtL9RQazcVeDJ4M1RuxJx-I9tBk_ycFqYUoDj8I6ZCnQKBIwxBRHjnhP_0_Kge/pub?output=xlsx";
 
@@ -885,17 +886,21 @@
 
       try {
         let arrayBuffer;
-        try {
-          const localRes = await fetch("TokoYakin.xlsx");
-          if (localRes.ok) {
-            arrayBuffer = await localRes.arrayBuffer();
-          } else {
-            throw new Error("Local file not found");
+        if (cachedSheetData) {
+          arrayBuffer = cachedSheetData;
+        } else {
+          try {
+            const localRes = await fetch("TokoYakin.xlsx");
+            if (localRes.ok) {
+              arrayBuffer = await localRes.arrayBuffer();
+            } else {
+              throw new Error("Local file not found");
+            }
+          } catch {
+            const response = await fetch(GOOGLE_SHEET_URL);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            arrayBuffer = await response.arrayBuffer();
           }
-        } catch {
-          const response = await fetch(GOOGLE_SHEET_URL);
-          if (!response.ok) throw new Error(`HTTP ${response.status}`);
-          arrayBuffer = await response.arrayBuffer();
         }
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const sheet = workbook.Sheets[sheetName];
@@ -981,7 +986,11 @@
         showTemporaryToast("⏳ Syncing from Google Sheets...");
         const response = await fetch(GOOGLE_SHEET_URL);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const blob = await response.blob();
+        const arrayBuffer = await response.arrayBuffer();
+        // Cache in memory so it loads instantly
+        cachedSheetData = arrayBuffer;
+        // Trigger download (goes straight to Downloads, no dialog)
+        const blob = new Blob([arrayBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
@@ -990,11 +999,9 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        // Reload current sheet after download completes
-        setTimeout(() => {
-          loadSheet(currentActiveSheet);
-          showTemporaryToast("✅ Sheet synced — saved TokoYakin.xlsx");
-        }, 500);
+        // Reload current sheet from cache
+        await loadSheet(currentActiveSheet);
+        showTemporaryToast("✅ Synced & loaded — file saved to Downloads");
       } catch (err) {
         showTemporaryToast("❌ Sync failed: " + err.message);
       }
