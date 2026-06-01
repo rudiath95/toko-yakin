@@ -80,14 +80,11 @@
               </svg>
             </div>
             <input type="text" id="productSearchInput" placeholder="Search by barcode or name..."
-                   class="w-full bg-gray-900 border border-gray-600 rounded-lg py-2 pl-9 pr-4 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" autofocus>
+                   class="w-full bg-gray-900 border border-gray-600 rounded-lg py-2 pl-9 pr-8 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" autofocus>
+            <button id="clearSearchBtn" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white text-lg leading-none hidden">&times;</button>
           </div>
           <div class="flex items-center gap-2">
             <span id="searchResultCount" class="text-xs text-gray-400 bg-gray-800/60 px-2.5 py-1 rounded-full">All products</span>
-            <button id="clearSearchBtn" class="text-xs text-gray-400 hover:text-white bg-gray-700/50 hover:bg-gray-600 px-3 py-1.5 rounded-md transition flex items-center gap-1">
-              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-              Clear
-            </button>
             <button id="toggleBulkColumnsBtn" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-700 hover:bg-gray-600 transition flex items-center gap-1 shadow-sm">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
               <span id="bulkToggleLabel">Show Bulk Columns</span>
@@ -676,7 +673,9 @@
 
     function clearSearch() {
       const inp = document.getElementById("productSearchInput");
+      const btn = document.getElementById("clearSearchBtn");
       if (inp) { inp.value = ""; applyProductFilter(); inp.focus(); }
+      if (btn) btn.classList.add("hidden");
     }
 
     function showTemporaryToast(message) {
@@ -724,14 +723,18 @@
     function initSearchEvents() {
       const inp = document.getElementById("productSearchInput");
       const btn = document.getElementById("clearSearchBtn");
+      const toggleClearBtn = () => {
+        if (inp.value.length > 0) btn.classList.remove("hidden"); else btn.classList.add("hidden");
+      };
       if (inp) {
-        inp.addEventListener("input", applyProductFilter);
+        inp.addEventListener("input", () => { applyProductFilter(); toggleClearBtn(); });
         inp.addEventListener("keydown", (e) => {
           if (e.key === "Enter") {
             e.preventDefault();
             addFirstVisibleProduct();
             inp.value = '';
             applyProductFilter();
+            toggleClearBtn();
           }
         });
       }
