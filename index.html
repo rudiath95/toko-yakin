@@ -388,15 +388,18 @@
       cartOpen = open;
       const panel = document.getElementById("cartPanel");
       const backdrop = document.getElementById("cartBackdrop");
-      if (!panel || !backdrop) return;
+      const toggleBtn = document.getElementById("cartToggleBtn");
+      if (!panel || !backdrop || !toggleBtn) return;
       if (open) {
         panel.classList.remove("translate-x-full");
         panel.classList.add("translate-x-0");
         backdrop.classList.remove("hidden");
+        toggleBtn.classList.add("hidden");
       } else {
         panel.classList.remove("translate-x-0");
         panel.classList.add("translate-x-full");
         backdrop.classList.add("hidden");
+        toggleBtn.classList.remove("hidden");
       }
     }
 
