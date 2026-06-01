@@ -117,15 +117,25 @@
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M12 15v6" />
         </svg>
         Shopping Cart
-        <button id="clearCartBtn" class="ml-auto text-xs font-normal text-red-400 hover:text-red-300 bg-gray-700/50 hover:bg-red-900/50 px-2.5 py-1 rounded-md transition flex items-center gap-1">
-          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-          Clear
-        </button>
-        <button id="closeCartBtn" class="md:hidden ml-2 text-gray-400 hover:text-white bg-gray-700/50 hover:bg-gray-600 rounded-lg p-1.5 transition" title="Close cart">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+        <div class="ml-auto flex items-center gap-1">
+          <button id="exportCartBtn" class="text-xs font-medium text-gray-300 hover:text-white bg-gray-700/50 hover:bg-gray-600 px-2 py-1 rounded-md transition" title="Export cart to clipboard">
+            <svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+            Export
+          </button>
+          <button id="importCartBtn" class="text-xs font-medium text-gray-300 hover:text-white bg-gray-700/50 hover:bg-gray-600 px-2 py-1 rounded-md transition" title="Import cart from clipboard">
+            <svg class="w-3.5 h-3.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 3v12" /></svg>
+            Import
+          </button>
+          <button id="clearCartBtn" class="text-xs font-normal text-red-400 hover:text-red-300 bg-gray-700/50 hover:bg-red-900/50 px-2.5 py-1 rounded-md transition flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+            Clear
+          </button>
+          <button id="closeCartBtn" class="md:hidden text-gray-400 hover:text-white bg-gray-700/50 hover:bg-gray-600 rounded-lg p-1.5 transition" title="Close cart">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </h2>
     </div>
 
@@ -383,6 +393,51 @@
 
     function toggleCart() {
       setCartOpen(!cartOpen);
+    }
+
+    // ---------- EXPORT / IMPORT CART ----------
+    function exportCart() {
+      if (cart.length === 0) {
+        showTemporaryToast("⚠️ Cart is empty, nothing to export");
+        return;
+      }
+      const lines = cart.map(item => `${item.barcode}:${item.qty}`);
+      const text = lines.join("\n");
+      navigator.clipboard.writeText(text).then(() => {
+        showTemporaryToast(`📋 Exported ${cart.length} items to clipboard`);
+      }).catch(() => {
+        showTemporaryToast("❌ Failed to copy to clipboard");
+      });
+    }
+
+    async function importCart() {
+      try {
+        const text = await navigator.clipboard.readText();
+        const lines = text.split("\n").filter(l => l.trim());
+        if (lines.length === 0) {
+          showTemporaryToast("⚠️ Clipboard is empty");
+          return;
+        }
+        let added = 0, errors = 0, skipped = 0;
+        for (const line of lines) {
+          const parts = line.trim().split(/[:|]/);
+          if (parts.length < 2) { errors++; continue; }
+          const barcode = parts[0].trim();
+          const qty = parseInt(parts[1].trim());
+          if (!barcode || isNaN(qty) || qty < 1) { errors++; continue; }
+          const prod = products[barcode];
+          if (!prod) { skipped++; continue; }
+          addToCartWithSnapshot(prod, qty);
+          added++;
+        }
+        if (added > 0) {
+          showTemporaryToast(`📥 Imported ${added} item(s)${skipped > 0 ? ` (${skipped} not found)` : ""}${errors > 0 ? ` (${errors} invalid)` : ""}`);
+        } else {
+          showTemporaryToast("⚠️ No valid items found in clipboard");
+        }
+      } catch {
+        showTemporaryToast("❌ Failed to read clipboard");
+      }
     }
 
     // ---------- RENDER CART (INCLUDES REMOVE X BUTTON) ----------
@@ -967,6 +1022,8 @@
       document.getElementById("cartToggleBtn")?.addEventListener("click", toggleCart);
       document.getElementById("closeCartBtn")?.addEventListener("click", () => setCartOpen(false));
       document.getElementById("cartBackdrop")?.addEventListener("click", () => setCartOpen(false));
+      document.getElementById("exportCartBtn")?.addEventListener("click", exportCart);
+      document.getElementById("importCartBtn")?.addEventListener("click", importCart);
       document.addEventListener("keydown", (e) => { if (e.key === "Escape" && cartOpen) setCartOpen(false); });
     }
 
