@@ -55,7 +55,7 @@
 <body class="bg-gray-900 text-gray-100 antialiased min-h-screen">
 
   <!-- main content (left, 60% width) -->
-  <div class="mr-[40%]">
+  <div class="md:mr-[40%]">
     <div class="p-6 pb-12">
       <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
         <h1 class="text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-100 to-gray-300 bg-clip-text text-transparent">
@@ -95,10 +95,10 @@
           <table class="product-table w-full text-sm border-collapse">
             <thead class="bg-gray-800 border-b border-gray-700">
               <tr class="text-left text-gray-300 font-semibold">
-                <th class="px-4 py-3">Barcode</th><th class="px-4 py-3">Name</th><th class="px-4 py-3">Category</th>
-                <th class="px-4 py-3">Single Price</th><th class="px-4 py-3 bulk-col">Min (B1)</th><th class="px-4 py-3 bulk-col">Bulk 1 (total)</th>
-                <th class="px-4 py-3 bulk-col">Min (B2)</th><th class="px-4 py-3 bulk-col">Bulk 2 (total)</th><th class="px-4 py-3 bulk-col">Min (B3)</th>
-                <th class="px-4 py-3 bulk-col">Bulk 3 (total)</th><th class="px-4 py-3">Qty</th><th class="px-4 py-3">Action</th>
+                <th class="px-4 py-3 hidden md:table-cell">Barcode</th><th class="px-4 py-3">Name</th><th class="px-4 py-3 hidden md:table-cell">Category</th>
+                <th class="px-4 py-3">Single Price</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Min (B1)</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Bulk 1 (total)</th>
+                <th class="px-4 py-3 bulk-col hidden md:table-cell">Min (B2)</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Bulk 2 (total)</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Min (B3)</th>
+                <th class="px-4 py-3 bulk-col hidden md:table-cell">Bulk 3 (total)</th><th class="px-4 py-3 hidden md:table-cell">Qty</th><th class="px-4 py-3">Action</th>
               </tr>
             </thead>
             <tbody id="productTable" class="divide-y divide-gray-800/70 bg-gray-900/50"></tbody>
@@ -109,8 +109,8 @@
     </div>
   </div>
 
-  <!-- fixed cart sidebar (40% width) with REMOVE (X) BUTTON column -->
-  <div class="fixed top-0 right-0 w-[40%] h-full bg-gray-800/95 backdrop-blur-sm border-l border-gray-700 shadow-2xl flex flex-col z-20">
+  <!-- cart sidebar -->
+  <div id="cartPanel" class="fixed top-0 right-0 w-full md:w-[40%] h-full bg-gray-800/95 backdrop-blur-sm border-l border-gray-700 shadow-2xl flex flex-col z-30 translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
     <div class="px-5 pt-6 pb-3 border-b border-gray-700/80">
       <h2 class="text-xl font-bold flex items-center gap-2">
         <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -121,6 +121,11 @@
           <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
           Clear
         </button>
+        <button id="closeCartBtn" class="md:hidden ml-2 text-gray-400 hover:text-white bg-gray-700/50 hover:bg-gray-600 rounded-lg p-1.5 transition" title="Close cart">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </h2>
     </div>
 
@@ -129,10 +134,10 @@
         <table class="w-full text-sm border-collapse">
           <thead class="bg-gray-700/60 sticky top-0 z-10 backdrop-blur-sm">
             <tr class="text-left text-gray-200 font-semibold text-xs uppercase tracking-wider">
-              <th class="px-2 py-2.5">Barcode</th>
+              <th class="px-2 py-2.5 hidden md:table-cell">Barcode</th>
               <th class="px-2 py-2.5">Name</th>
               <th class="px-2 py-2.5 text-center">Qty</th>
-              <th class="px-2 py-2.5">Unit</th>
+              <th class="px-2 py-2.5 hidden md:table-cell">Unit</th>
               <th class="px-2 py-2.5">Subtotal</th>
               <th class="px-2 py-2.5 text-center">Info</th>
               <th class="px-2 py-2.5 text-center">Act</th>
@@ -158,6 +163,17 @@
     </div>
   </div>
 
+  <!-- mobile cart backdrop -->
+  <div id="cartBackdrop" class="fixed inset-0 bg-black/50 z-20 hidden md:hidden transition-opacity duration-300"></div>
+
+  <!-- mobile cart toggle button -->
+  <button id="cartToggleBtn" class="fixed top-4 right-4 md:hidden z-30 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-lg w-12 h-12 shadow-lg flex items-center justify-center transition-all">
+    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M12 15v6" />
+    </svg>
+    <span id="cartCountBadge" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center hidden">0</span>
+  </button>
+
   <script>
     // ---------- GLOBALS ----------
     let cart = [];
@@ -166,6 +182,7 @@
     let currentActiveSheet = "Biasa";
     let isLoading = false;
     let showBulkColumns = false;    // DEFAULT = HIDDEN (bulk columns invisible)
+    let cartOpen = false;
 
     const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNgrO1HT1fanpNDiFtL9RQazcVeDJ4M1RuxJx-I9tBk_ycFqYUoDj8I6ZCnQKBIwxBRHjnhP_0_Kge/pub?output=xlsx";
 
@@ -182,9 +199,13 @@
 
     // ---------- get effective visible column count (based on bulk toggle) ----------
     function getVisibleColumnCount() {
-      const totalCols = 12;        // Barcode,Name,Category,Single,6 bulk cols, Qty, Action
-      const bulkHiddenCols = 6;
-      return showBulkColumns ? totalCols : totalCols - bulkHiddenCols;
+      const isMobile = window.innerWidth < 768;
+      if (isMobile) {
+        const baseCols = 3; // Name, Single Price, Action
+        return showBulkColumns ? baseCols + 6 : baseCols;
+      }
+      const totalCols = 12;
+      return showBulkColumns ? totalCols : totalCols - 6;
     }
 
     // ---------- APPLY COLUMN VISIBILITY (hide/show bulk columns: indices 4,5,6,7,8,9) ----------
@@ -193,11 +214,17 @@
       if (!table) return;
 
       const theadRows = table.querySelectorAll("thead tr");
+      const mobileHidden = (idx) => idx === 0 || idx === 2 || idx === 10;
+
+      const isMobile = window.innerWidth < 768;
+
       theadRows.forEach(row => {
         const thCells = row.querySelectorAll("th");
         thCells.forEach((th, idx) => {
           if (idx >= 4 && idx <= 9) {
-            th.style.display = showBulkColumns ? "table-cell" : "none";
+            th.style.display = (showBulkColumns && !isMobile) ? "table-cell" : "none";
+          } else if (mobileHidden(idx)) {
+            th.style.display = "";
           } else {
             th.style.display = "table-cell";
           }
@@ -211,7 +238,9 @@
           const cells = row.querySelectorAll("td");
           cells.forEach((cell, idx) => {
             if (idx >= 4 && idx <= 9) {
-              cell.style.display = showBulkColumns ? "table-cell" : "none";
+              cell.style.display = (showBulkColumns && !isMobile) ? "table-cell" : "none";
+            } else if (mobileHidden(idx)) {
+              cell.style.display = "";
             } else {
               cell.style.display = "table-cell";
             }
@@ -281,17 +310,17 @@
       tr.className = "product-row hover:bg-gray-800/40 transition-colors";
       const fmtPrice = (val) => (val && !isNaN(val) && val > 0) ? `Rp. ${val.toFixed(2)}` : '-';
       tr.innerHTML = `
-        <td class="px-4 py-2.5 font-mono text-xs">${escapeHtml(barcode)}</td>
+        <td class="px-4 py-2.5 font-mono text-xs hidden md:table-cell">${escapeHtml(barcode)}</td>
         <td class="px-4 py-2.5 font-medium">${escapeHtml(name)}</td>
-        <td class="px-4 py-2.5 text-gray-300">${escapeHtml(category)}</td>
+        <td class="px-4 py-2.5 text-gray-300 hidden md:table-cell">${escapeHtml(category)}</td>
         <td class="px-4 py-2.5 font-mono text-emerald-300">Rp. ${singlePrice.toFixed(2)}</td>
-        <td class="px-4 py-2.5 bulk-col">${min1 || '-'}</td>
-        <td class="px-4 py-2.5 font-mono text-blue-300 text-xs bulk-col">${fmtPrice(total1)}</td>
-        <td class="px-4 py-2.5 bulk-col">${min2 || '-'}</td>
-        <td class="px-4 py-2.5 font-mono text-blue-300 text-xs bulk-col">${fmtPrice(total2)}</td>
-        <td class="px-4 py-2.5 bulk-col">${min3 || '-'}</td>
-        <td class="px-4 py-2.5 font-mono text-blue-300 text-xs bulk-col">${fmtPrice(total3)}</td>
-        <td class="px-4 py-2.5">
+        <td class="px-4 py-2.5 bulk-col hidden md:table-cell">${min1 || '-'}</td>
+        <td class="px-4 py-2.5 font-mono text-blue-300 text-xs bulk-col hidden md:table-cell">${fmtPrice(total1)}</td>
+        <td class="px-4 py-2.5 bulk-col hidden md:table-cell">${min2 || '-'}</td>
+        <td class="px-4 py-2.5 font-mono text-blue-300 text-xs bulk-col hidden md:table-cell">${fmtPrice(total2)}</td>
+        <td class="px-4 py-2.5 bulk-col hidden md:table-cell">${min3 || '-'}</td>
+        <td class="px-4 py-2.5 font-mono text-blue-300 text-xs bulk-col hidden md:table-cell">${fmtPrice(total3)}</td>
+        <td class="px-4 py-2.5 hidden md:table-cell">
           <input type="number" min="1" value="1" class="qty-input w-20 px-2 py-1.5 bg-gray-800 border border-gray-600 rounded-md text-white focus:ring-1 focus:ring-blue-500 outline-none" />
         </td>
         <td class="px-4 py-2.5">
@@ -335,13 +364,39 @@
       renderCart();
     }
 
+    // ---------- CART PANEL TOGGLE (MOBILE) ----------
+    function setCartOpen(open) {
+      cartOpen = open;
+      const panel = document.getElementById("cartPanel");
+      const backdrop = document.getElementById("cartBackdrop");
+      if (!panel || !backdrop) return;
+      if (open) {
+        panel.classList.remove("translate-x-full");
+        panel.classList.add("translate-x-0");
+        backdrop.classList.remove("hidden");
+      } else {
+        panel.classList.remove("translate-x-0");
+        panel.classList.add("translate-x-full");
+        backdrop.classList.add("hidden");
+      }
+    }
+
+    function toggleCart() {
+      setCartOpen(!cartOpen);
+    }
+
     // ---------- RENDER CART (INCLUDES REMOVE X BUTTON) ----------
     function renderCart() {
       const cartTbody = document.getElementById("cart");
       const emptyMsg = document.getElementById("emptyCartMsg");
+      const badge = document.getElementById("cartCountBadge");
       if (!cartTbody) return;
       cartTbody.innerHTML = "";
       let overallTotal = 0;
+      if (badge) {
+        badge.textContent = cart.length;
+        badge.classList.toggle("hidden", cart.length === 0);
+      }
       if (cart.length === 0) {
         if (emptyMsg) emptyMsg.classList.remove("hidden");
         document.getElementById("total").textContent = `Rp. 0.00`;
@@ -368,7 +423,7 @@
         const tr = document.createElement("tr");
         tr.className = "border-b border-gray-700/50 hover:bg-gray-700/30 transition";
         tr.innerHTML = `
-          <td class="px-2 py-2.5 font-mono text-xs text-gray-300">${escapeHtml(item.barcode)}</td>
+          <td class="px-2 py-2.5 font-mono text-xs text-gray-300 hidden md:table-cell">${escapeHtml(item.barcode)}</td>
           <td class="px-2 py-2.5 font-medium text-gray-200">${escapeHtml(item.name)}</td>
           <td class="px-2 py-2.5 text-center">
             <div class="inline-flex items-center gap-1 bg-gray-700/50 rounded-lg shadow-inner">
@@ -377,7 +432,7 @@
               <button class="increase w-7 h-7 rounded-r-lg bg-gray-700 hover:bg-gray-600 text-white font-bold text-sm">+</button>
             </div>
           </td>
-          <td class="px-2 py-2.5 text-xs text-emerald-300 font-mono">Rp. ${item.singlePrice.toFixed(2)}</td>
+          <td class="px-2 py-2.5 text-xs text-emerald-300 font-mono hidden md:table-cell">Rp. ${item.singlePrice.toFixed(2)}</td>
           <td class="px-2 py-2.5 font-mono text-emerald-400 font-semibold">Rp. ${subtotal.toFixed(2)}</td>
           <td class="px-2 py-2.5 text-center">
             <button class="details-btn bg-gray-700/80 hover:bg-gray-600 text-white rounded-md px-2 py-1 text-xs transition-colors shadow-sm">📋 Details</button>
@@ -907,6 +962,12 @@
       const btnGrosir = document.getElementById("toggleGrosir");
       if (btnBiasa) btnBiasa.addEventListener("click", () => { if (!isLoading && currentActiveSheet !== "Biasa") loadSheet("Biasa"); });
       if (btnGrosir) btnGrosir.addEventListener("click", () => { if (!isLoading && currentActiveSheet !== "Grosir") loadSheet("Grosir"); });
+
+      // mobile cart toggle
+      document.getElementById("cartToggleBtn")?.addEventListener("click", toggleCart);
+      document.getElementById("closeCartBtn")?.addEventListener("click", () => setCartOpen(false));
+      document.getElementById("cartBackdrop")?.addEventListener("click", () => setCartOpen(false));
+      document.addEventListener("keydown", (e) => { if (e.key === "Escape" && cartOpen) setCartOpen(false); });
     }
 
     initialize();
