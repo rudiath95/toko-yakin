@@ -192,6 +192,7 @@
     // ---------- GLOBALS ----------
     let cart = [];
     let products = {};          // barcode -> product info (current active sheet)
+    let allProducts = {};       // sheetName -> { barcode -> product info }
     let currentSearchTerm = "";
     let currentActiveSheet = "Biasa";
     let isLoading = false;
@@ -430,7 +431,15 @@
           const barcode = parts[0].trim();
           const qty = parseInt(parts[1].trim());
           if (!barcode || isNaN(qty) || qty < 1) { errors++; continue; }
-          const prod = products[barcode];
+          let prod = products[barcode];
+          if (!prod) {
+            for (const sheetName in allProducts) {
+              if (allProducts[sheetName][barcode]) {
+                prod = allProducts[sheetName][barcode];
+                break;
+              }
+            }
+          }
           if (!prod) { skipped++; continue; }
           addToCartWithSnapshot(prod, qty);
           added++;
@@ -917,6 +926,7 @@
         if (isHeaderRow) dataRows = rows.slice(1);
 
         products = {};
+        allProducts[sheetName] = {};
         if (tbody) tbody.innerHTML = "";
 
         let productCount = 0;
@@ -941,6 +951,7 @@
           if (min3 > 0 && total3 > 0) tiers.push({ min: min3, totalPrice: total3 });
 
           products[barcode] = { barcode, name, category, singlePrice, tiers };
+          allProducts[sheetName][barcode] = products[barcode];
           addProductRowToDOM(barcode, name, category, singlePrice, min1, total1, min2, total2, min3, total3);
           productCount++;
         }
@@ -1016,6 +1027,7 @@
       const tbody = document.getElementById("productTable");
       if (tbody) tbody.innerHTML = "";
       products = {};
+      allProducts["Demo"] = {};
       fallback.forEach(cols => {
         const [barcode, name, cat, single, m1, t1, m2, t2, m3, t3] = cols.map(c => c.trim());
         const singlePrice = parseFloat(single) || 0;
@@ -1024,6 +1036,7 @@
         if (parseInt(m2) > 0 && parseFloat(t2) > 0) tiers.push({ min: parseInt(m2), totalPrice: parseFloat(t2) });
         if (parseInt(m3) > 0 && parseFloat(t3) > 0) tiers.push({ min: parseInt(m3), totalPrice: parseFloat(t3) });
         products[barcode] = { barcode, name, category: cat, singlePrice, tiers };
+        allProducts["Demo"][barcode] = products[barcode];
         addProductRowToDOM(barcode, name, cat, singlePrice, m1, parseFloat(t1), m2, parseFloat(t2), m3, parseFloat(t3));
       });
       currentActiveSheet = "Demo (Fallback)";
