@@ -1,2 +1,5 @@
+*.pem
 localhost+2-key.pem
 localhost+2.pem
+node_modules/
+dist/output.css
