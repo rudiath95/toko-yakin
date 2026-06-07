@@ -68,6 +68,7 @@
         <div class="bg-gray-800/60 border border-gray-700 rounded-xl p-1 shadow-md flex gap-1">
           <button id="toggleBiasa" data-sheet="Biasa" class="sheet-toggle-btn px-5 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-blue-600 text-white shadow-sm">📄 Biasa</button>
           <button id="toggleGrosir" data-sheet="Grosir" class="sheet-toggle-btn px-5 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-gray-700 text-gray-200 hover:bg-gray-600">📦 Grosir</button>
+          <button id="sourceToggle" class="px-2.5 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-blue-600 text-white shadow-sm" title="Data source: Local file">🌐</button>
           <button id="syncBtn" class="mobile-hidden inline-flex px-3 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-gray-700 text-gray-200 hover:bg-gray-600 items-center gap-1" title="Download latest spreadsheet from Google Sheets">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
             Sync
@@ -202,6 +203,7 @@
     let showBulkColumns = false;    // DEFAULT = HIDDEN (bulk columns invisible)
     let cartOpen = false;
     let cachedSheetData = null;     // synced xlsx data (Uint8Array)
+    let useGoogleSource = false;    // toggle: true = Google Sheets, false = local file
 
     const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNgrO1HT1fanpNDiFtL9RQazcVeDJ4M1RuxJx-I9tBk_ycFqYUoDj8I6ZCnQKBIwxBRHjnhP_0_Kge/pub?output=xlsx";
 
@@ -939,6 +941,30 @@
       });
     }
 
+    // ---------- TOGGLE DATA SOURCE (local / Google) ----------
+    function updateSourceToggleUI() {
+      const btn = document.getElementById("sourceToggle");
+      if (!btn) return;
+      if (useGoogleSource) {
+        btn.innerHTML = "🇬";
+        btn.title = "Data source: Google Sheets";
+        btn.classList.add("bg-blue-600", "text-white", "shadow-sm");
+        btn.classList.remove("bg-gray-700", "text-gray-200", "hover:bg-gray-600");
+      } else {
+        btn.innerHTML = "🌐";
+        btn.title = "Data source: Local file";
+        btn.classList.add("bg-blue-600", "text-white", "shadow-sm");
+        btn.classList.remove("bg-gray-700", "text-gray-200", "hover:bg-gray-600");
+      }
+    }
+
+    function toggleDataSource() {
+      useGoogleSource = !useGoogleSource;
+      if (useGoogleSource) cachedSheetData = null; // force fresh fetch from Google
+      updateSourceToggleUI();
+      loadSheet(currentActiveSheet);
+    }
+
     async function loadSheet(sheetName) {
       if (isLoading) return;
       isLoading = true;
@@ -949,21 +975,19 @@
 
       try {
         let arrayBuffer;
-        if (cachedSheetData) {
-          arrayBuffer = cachedSheetData;
-        } else {
-          try {
-            const localRes = await fetch("TokoYakin.xlsx");
-            if (localRes.ok) {
-              arrayBuffer = await localRes.arrayBuffer();
-            } else {
-              throw new Error("Local file not found");
-            }
-          } catch {
+        if (useGoogleSource) {
+          if (cachedSheetData) {
+            arrayBuffer = cachedSheetData;
+          } else {
             const response = await fetch(GOOGLE_SHEET_URL);
             if (!response.ok) throw new Error(`HTTP ${response.status}`);
             arrayBuffer = await response.arrayBuffer();
+            cachedSheetData = arrayBuffer;
           }
+        } else {
+          const localRes = await fetch("TokoYakin.xlsx");
+          if (!localRes.ok) throw new Error("Local file not found");
+          arrayBuffer = await localRes.arrayBuffer();
         }
         const workbook = XLSX.read(arrayBuffer, { type: 'array' });
         const sheet = workbook.Sheets[sheetName];
@@ -1055,6 +1079,9 @@
         const arrayBuffer = await response.arrayBuffer();
         // Cache in memory so it loads instantly
         cachedSheetData = arrayBuffer;
+        // Switch to Google mode to display synced data
+        useGoogleSource = true;
+        updateSourceToggleUI();
         // Trigger download (goes straight to Downloads, no dialog)
         const blob = new Blob([arrayBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
         const url = URL.createObjectURL(blob);
@@ -1119,6 +1146,7 @@
       }
       updateAllAddButtons();
       applyColumnVisibility();
+      updateSourceToggleUI();
 
       const checkoutBtn = document.getElementById("checkout");
       if (checkoutBtn) {
@@ -1133,6 +1161,7 @@
       if (btnBiasa) btnBiasa.addEventListener("click", () => { if (!isLoading && currentActiveSheet !== "Biasa") loadSheet("Biasa"); });
       if (btnGrosir) btnGrosir.addEventListener("click", () => { if (!isLoading && currentActiveSheet !== "Grosir") loadSheet("Grosir"); });
       document.getElementById("syncBtn")?.addEventListener("click", syncSheet);
+      document.getElementById("sourceToggle")?.addEventListener("click", toggleDataSource);
 
       // mobile cart toggle
       document.getElementById("cartToggleBtn")?.addEventListener("click", toggleCart);
