@@ -327,6 +327,7 @@
       if (!tbody) return;
       const tr = document.createElement("tr");
       tr.className = "product-row hover:bg-gray-800/40 transition-colors";
+      tr.setAttribute('data-barcode', barcode);
       const fmtPrice = (val) => (val && !isNaN(val) && val > 0) ? `Rp. ${val.toFixed(2)}` : '-';
       tr.innerHTML = `
         <td class="px-4 py-2.5 font-mono text-xs hidden md:table-cell">${escapeHtml(barcode)}</td>
@@ -343,25 +344,9 @@
           <input type="number" min="1" value="1" class="qty-input w-20 px-2 py-1.5 bg-gray-800 border border-gray-600 rounded-md text-white focus:ring-1 focus:ring-blue-500 outline-none" />
         </td>
         <td class="px-4 py-2.5">
-          <button class="add-btn bg-green-700 hover:bg-green-600 text-white text-sm px-3 py-1.5 rounded-lg shadow-md transition flex items-center gap-1">
-            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-            Add
-          </button>
+          <div class="add-btn-container" data-barcode="${barcode}"></div>
         </td>
       `;
-      const addBtn = tr.querySelector(".add-btn");
-      const qtyInput = tr.querySelector(".qty-input");
-      addBtn.addEventListener("click", () => {
-        let qty = parseInt(qtyInput.value);
-        if (isNaN(qty) || qty < 1) qty = 1;
-        const prod = products[barcode];
-        if (prod) {
-          addToCartWithSnapshot(prod, qty);
-          showTemporaryToast(`➕ Added ${qty}x ${prod.name} to cart`);
-        } else {
-          console.warn("Product not found");
-        }
-      });
       tbody.appendChild(tr);
     }
 
@@ -381,6 +366,63 @@
         });
       }
       renderCart();
+    }
+
+    // ---------- UPDATE ADD BUTTONS (sync with cart) ----------
+    function updateAllAddButtons() {
+      document.querySelectorAll('.add-btn-container').forEach(container => {
+        const barcode = container.dataset.barcode;
+        const cartItem = cart.find(i => i.barcode === barcode);
+        if (cartItem) {
+          container.innerHTML = `
+            <div class="inline-flex items-center gap-0.5 bg-green-800/60 rounded-lg shadow-inner border border-green-600/40">
+              <button class="add-dec-btn w-7 h-7 rounded-l-lg bg-green-700 hover:bg-green-600 text-white font-bold text-sm leading-none transition">−</button>
+              <span class="w-8 text-center text-sm font-semibold text-white">${cartItem.qty}</span>
+              <button class="add-inc-btn w-7 h-7 rounded-r-lg bg-green-700 hover:bg-green-600 text-white font-bold text-sm leading-none transition">+</button>
+            </div>
+          `;
+          const decBtn = container.querySelector('.add-dec-btn');
+          const incBtn = container.querySelector('.add-inc-btn');
+          decBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = cart.findIndex(i => i.barcode === barcode);
+            if (idx !== -1) {
+              if (cart[idx].qty <= 1) {
+                cart.splice(idx, 1);
+              } else {
+                cart[idx].qty--;
+              }
+              renderCart();
+            }
+          });
+          incBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const idx = cart.findIndex(i => i.barcode === barcode);
+            if (idx !== -1) {
+              cart[idx].qty++;
+              renderCart();
+            }
+          });
+        } else {
+          container.innerHTML = `
+            <button class="add-btn bg-green-700 hover:bg-green-600 text-white text-sm px-3 py-1.5 rounded-lg shadow-md transition flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+              Add
+            </button>
+          `;
+          const addBtn = container.querySelector('.add-btn');
+          const qtyInput = container.closest('tr').querySelector('.qty-input');
+          addBtn.addEventListener('click', () => {
+            let qty = parseInt(qtyInput.value);
+            if (isNaN(qty) || qty < 1) qty = 1;
+            const prod = products[barcode];
+            if (prod) {
+              addToCartWithSnapshot(prod, qty);
+              showTemporaryToast(`➕ Added ${qty}x ${prod.name} to cart`);
+            }
+          });
+        }
+      });
     }
 
     // ---------- CART PANEL TOGGLE (MOBILE) ----------
@@ -476,6 +518,7 @@
         if (emptyMsg) emptyMsg.classList.remove("hidden");
         document.getElementById("total").textContent = `Rp. 0.00`;
         saveCart();
+        updateAllAddButtons();
         return;
       }
       if (emptyMsg) emptyMsg.classList.add("hidden");
@@ -547,6 +590,7 @@
       }
       document.getElementById("total").textContent = `Rp. ${overallTotal.toFixed(2)}`;
       saveCart();
+      updateAllAddButtons();
     }
 
     function saveCart() {
@@ -837,11 +881,15 @@
         return;
       }
       const firstRow = visibleRows[0];
-      const addButton = firstRow.querySelector(".add-btn");
-      if (addButton) {
-        addButton.click();
-        const nameCell = firstRow.querySelector("td:nth-child(2)");
-        const productName = nameCell ? nameCell.innerText : "item";
+      const incBtn = firstRow.querySelector(".add-inc-btn");
+      const addBtn = firstRow.querySelector(".add-btn");
+      const nameCell = firstRow.querySelector("td:nth-child(2)");
+      const productName = nameCell ? nameCell.innerText : "item";
+      if (incBtn) {
+        incBtn.click();
+        showTemporaryToast(`✨ [ENTER] +1 "${productName}"`);
+      } else if (addBtn) {
+        addBtn.click();
         showTemporaryToast(`✨ [ENTER] Added "${productName}" to cart`);
       } else {
         showTemporaryToast("❌ Could not add item, action missing.");
@@ -980,6 +1028,7 @@
         if (searchInput) searchInput.value = "";
         applyProductFilter();
         applyColumnVisibility();
+        updateAllAddButtons();
       } catch (err) {
         console.error(`Failed to load sheet "${sheetName}":`, err);
         if (tbody) {
@@ -1068,6 +1117,7 @@
         console.warn("Real sheet load failed, using fallback demo", e);
         insertFallbackDemoForSheet();
       }
+      updateAllAddButtons();
       applyColumnVisibility();
 
       const checkoutBtn = document.getElementById("checkout");
