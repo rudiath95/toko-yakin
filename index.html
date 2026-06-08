@@ -330,7 +330,7 @@
       const tbody = document.getElementById("productTable");
       if (!tbody) return;
       const tr = document.createElement("tr");
-      tr.className = "product-row hover:bg-gray-800/40 transition-colors" + (hasGrosir ? " bg-gray-800/40" : "");
+      tr.className = "product-row hover:bg-gray-800/40 transition-colors" + (hasGrosir ? " bg-gray-800/70" : "");
       tr.setAttribute('data-barcode', barcode);
       const fmtPrice = (val) => (val && !isNaN(val) && val > 0) ? `Rp. ${val.toFixed(2)}` : '-';
       tr.innerHTML = `
