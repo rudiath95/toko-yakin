@@ -64,10 +64,11 @@
         <h1 class="text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-100 to-gray-300 bg-clip-text text-transparent">
           Toko Yakin
         </h1>
-        <!-- SHEET TOGGLE BUTTONS (Biasa / Grosir) - cart NOT cleared -->
+        <!-- VIEW TOGGLE BUTTONS (Combined / Biasa / Grosir) -->
         <div class="bg-gray-800/60 border border-gray-700 rounded-xl p-1 shadow-md flex gap-1">
-          <button id="toggleBiasa" data-sheet="Biasa" class="sheet-toggle-btn px-5 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-blue-600 text-white shadow-sm">📄 Biasa</button>
-          <button id="toggleGrosir" data-sheet="Grosir" class="sheet-toggle-btn px-5 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-gray-700 text-gray-200 hover:bg-gray-600">📦 Grosir</button>
+          <button data-view="combined" class="view-toggle-btn px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-blue-600 text-white shadow-sm">👥 All</button>
+          <button data-view="biasa" class="view-toggle-btn px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-gray-700 text-gray-200 hover:bg-gray-600">📄 Biasa</button>
+          <button data-view="grosir" class="view-toggle-btn px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-gray-700 text-gray-200 hover:bg-gray-600">📦 Grosir</button>
           <button id="sourceToggle" class="px-2.5 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-blue-600 text-white shadow-sm" title="Data source: Local file">🌐</button>
           <button id="syncBtn" class="mobile-hidden inline-flex px-3 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-gray-700 text-gray-200 hover:bg-gray-600 items-center gap-1" title="Download latest spreadsheet from Google Sheets">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
@@ -104,7 +105,7 @@
             <thead class="bg-gray-800 border-b border-gray-700">
               <tr class="text-left text-gray-300 font-semibold">
                 <th class="px-4 py-3 hidden md:table-cell">Barcode</th><th class="px-4 py-3">Name</th><th class="px-4 py-3 hidden md:table-cell">Category</th>
-                <th class="px-4 py-3">Single Price</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Min (B1)</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Bulk 1 (total)</th>
+                <th class="px-4 py-3">Biasa</th><th class="px-4 py-3">Grosir</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Min (B1)</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Bulk 1 (total)</th>
                 <th class="px-4 py-3 bulk-col hidden md:table-cell">Min (B2)</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Bulk 2 (total)</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Min (B3)</th>
                 <th class="px-4 py-3 bulk-col hidden md:table-cell">Bulk 3 (total)</th><th class="px-4 py-3 hidden md:table-cell">Qty</th><th class="px-4 py-3">Action</th>
               </tr>
@@ -195,10 +196,11 @@
   <script>
     // ---------- GLOBALS ----------
     let cart = [];
-    let products = {};          // barcode -> product info (current active sheet)
+    let products = {};          // barcode -> product info (current combined products)
     let allProducts = {};       // sheetName -> { barcode -> product info }
     let currentSearchTerm = "";
     let currentActiveSheet = "Biasa";
+    let viewMode = "combined";  // "combined" | "biasa" | "grosir"
     let isLoading = false;
     let showBulkColumns = false;    // DEFAULT = HIDDEN (bulk columns invisible)
     let cartOpen = false;
@@ -222,10 +224,10 @@
     function getVisibleColumnCount() {
       const isMobile = window.innerWidth < 768;
       if (isMobile) {
-        const baseCols = 3; // Name, Single Price, Action
+        const baseCols = 4; // Name, Biasa, Grosir, Action
         return showBulkColumns ? baseCols + 6 : baseCols;
       }
-      const totalCols = 12;
+      const totalCols = 13;
       return showBulkColumns ? totalCols : totalCols - 6;
     }
 
@@ -235,14 +237,14 @@
       if (!table) return;
 
       const theadRows = table.querySelectorAll("thead tr");
-      const mobileHidden = (idx) => idx === 0 || idx === 2 || idx === 10;
+      const mobileHidden = (idx) => idx === 0 || idx === 2 || idx === 11;
 
       const isMobile = window.innerWidth < 768;
 
       theadRows.forEach(row => {
         const thCells = row.querySelectorAll("th");
         thCells.forEach((th, idx) => {
-          if (idx >= 4 && idx <= 9) {
+          if (idx >= 5 && idx <= 10) {
             th.style.display = (showBulkColumns && !isMobile) ? "table-cell" : "none";
           } else if (mobileHidden(idx)) {
             th.style.display = "";
@@ -258,7 +260,7 @@
         rows.forEach(row => {
           const cells = row.querySelectorAll("td");
           cells.forEach((cell, idx) => {
-            if (idx >= 4 && idx <= 9) {
+            if (idx >= 5 && idx <= 10) {
               cell.style.display = (showBulkColumns && !isMobile) ? "table-cell" : "none";
             } else if (mobileHidden(idx)) {
               cell.style.display = "";
@@ -324,18 +326,20 @@
     }
 
     // ---------- RENDER PRODUCT ROW (dynamic row creation) ----------
-    function addProductRowToDOM(barcode, name, category, singlePrice, min1, total1, min2, total2, min3, total3) {
+    function addProductRowToDOM(barcode, name, category, biasaPrice, grosirPrice, min1, total1, min2, total2, min3, total3) {
       const tbody = document.getElementById("productTable");
       if (!tbody) return;
       const tr = document.createElement("tr");
-      tr.className = "product-row hover:bg-gray-800/40 transition-colors";
+      const hasGrosir = grosirPrice != null && grosirPrice > 0;
+      tr.className = "product-row hover:bg-gray-800/40 transition-colors" + (hasGrosir ? " bg-gray-800/40" : "");
       tr.setAttribute('data-barcode', barcode);
       const fmtPrice = (val) => (val && !isNaN(val) && val > 0) ? `Rp. ${val.toFixed(2)}` : '-';
       tr.innerHTML = `
         <td class="px-4 py-2.5 font-mono text-xs hidden md:table-cell">${escapeHtml(barcode)}</td>
         <td class="px-4 py-2.5 font-medium">${escapeHtml(name)}</td>
         <td class="px-4 py-2.5 text-gray-300 hidden md:table-cell">${escapeHtml(category)}</td>
-        <td class="px-4 py-2.5 font-mono text-emerald-300">Rp. ${singlePrice.toFixed(2)}</td>
+        <td class="px-4 py-2.5 font-mono text-emerald-300">${biasaPrice > 0 ? `Rp. ${biasaPrice.toFixed(2)}` : '-'}</td>
+        <td class="px-4 py-2.5 font-mono text-amber-300">${hasGrosir ? `Rp. ${grosirPrice.toFixed(2)}` : '-'}</td>
         <td class="px-4 py-2.5 bulk-col hidden md:table-cell">${min1 || '-'}</td>
         <td class="px-4 py-2.5 font-mono text-blue-300 text-xs bulk-col hidden md:table-cell">${fmtPrice(total1)}</td>
         <td class="px-4 py-2.5 bulk-col hidden md:table-cell">${min2 || '-'}</td>
@@ -958,19 +962,20 @@
       }
     }
 
-    function toggleDataSource() {
+    async function toggleDataSource() {
       useGoogleSource = !useGoogleSource;
       if (useGoogleSource) cachedSheetData = null; // force fresh fetch from Google
       updateSourceToggleUI();
-      loadSheet(currentActiveSheet);
+      allProducts = {};
+      await loadSheetData("Biasa");
+      await loadSheetData("Grosir");
+      switchView(viewMode);
     }
 
-    async function loadSheet(sheetName) {
+    async function loadSheetData(sheetName) {
       if (isLoading) return;
       isLoading = true;
-      const tbody = document.getElementById("productTable");
       const loadingMsgDiv = document.getElementById("productLoadingMsg");
-      if (tbody) tbody.innerHTML = '<tr class="loading-shimmer"><td colspan="12" class="h-24 text-center text-gray-400 italic">Loading products from sheet "'+sheetName+'" ...</td></tr>';
       if (loadingMsgDiv) loadingMsgDiv.classList.remove("hidden");
 
       try {
@@ -1003,10 +1008,7 @@
         );
         if (isHeaderRow) dataRows = rows.slice(1);
 
-        products = {};
-        allProducts[sheetName] = {};
-        if (tbody) tbody.innerHTML = "";
-
+        if (!allProducts[sheetName]) allProducts[sheetName] = {};
         let productCount = 0;
         for (const row of dataRows) {
           if (!row || row.length < 4) continue;
@@ -1028,45 +1030,107 @@
           if (min2 > 0 && total2 > 0) tiers.push({ min: min2, totalPrice: total2 });
           if (min3 > 0 && total3 > 0) tiers.push({ min: min3, totalPrice: total3 });
 
-          products[barcode] = { barcode, name, category, singlePrice, tiers };
-          allProducts[sheetName][barcode] = products[barcode];
-          addProductRowToDOM(barcode, name, category, singlePrice, min1, total1, min2, total2, min3, total3);
+          allProducts[sheetName][barcode] = { barcode, name, category, singlePrice, tiers };
           productCount++;
         }
-
         if (productCount === 0) throw new Error(`No valid products found in sheet "${sheetName}"`);
-
-        currentActiveSheet = sheetName;
-        document.querySelectorAll(".sheet-toggle-btn").forEach(btn => {
-          const sheetAttr = btn.getAttribute("data-sheet");
-          if (sheetAttr === sheetName) {
-            btn.classList.add("bg-blue-600", "text-white");
-            btn.classList.remove("bg-gray-700", "text-gray-200", "hover:bg-gray-600");
-          } else {
-            btn.classList.remove("bg-blue-600", "text-white");
-            btn.classList.add("bg-gray-700", "text-gray-200", "hover:bg-gray-600");
-          }
-        });
-
-        const searchInput = document.getElementById("productSearchInput");
-        if (searchInput) searchInput.value = "";
-        applyProductFilter();
-        applyColumnVisibility();
-        updateAllAddButtons();
       } catch (err) {
         console.error(`Failed to load sheet "${sheetName}":`, err);
-        if (tbody) {
-          tbody.innerHTML = `<tr class="bg-red-900/20"><td colspan="12" class="text-center py-12 text-red-300">
-            <div class="flex flex-col items-center gap-2">
-              <svg class="w-8 h-8 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              <span>⚠️ Failed to load sheet "${escapeHtml(sheetName)}": ${err.message}</span>
-              <span class="text-xs text-gray-400">Check sheet name or data structure</span>
-            </div>
-          </td></tr>`;
-        }
       } finally {
         isLoading = false;
         if (loadingMsgDiv) loadingMsgDiv.classList.add("hidden");
+      }
+    }
+
+    function renderSheetView(sheetName) {
+      const tbody = document.getElementById("productTable");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+      currentActiveSheet = sheetName;
+      products = { ...allProducts[sheetName] } || {};
+
+      for (const barcode in products) {
+        const p = products[barcode];
+        const tiers = p.tiers || [];
+        addProductRowToDOM(p.barcode, p.name, p.category, p.singlePrice, null,
+          tiers[0]?.min || 0, tiers[0]?.totalPrice || 0,
+          tiers[1]?.min || 0, tiers[1]?.totalPrice || 0,
+          tiers[2]?.min || 0, tiers[2]?.totalPrice || 0);
+      }
+
+      document.querySelectorAll(".view-toggle-btn").forEach(btn => {
+        const view = btn.getAttribute("data-view");
+        if (view === sheetName.toLowerCase()) {
+          btn.classList.add("bg-blue-600", "text-white");
+          btn.classList.remove("bg-gray-700", "text-gray-200", "hover:bg-gray-600");
+        } else {
+          btn.classList.remove("bg-blue-600", "text-white");
+          btn.classList.add("bg-gray-700", "text-gray-200", "hover:bg-gray-600");
+        }
+      });
+
+      const searchInput = document.getElementById("productSearchInput");
+      if (searchInput) searchInput.value = "";
+      applyProductFilter();
+      applyColumnVisibility();
+      updateAllAddButtons();
+    }
+
+    function renderCombinedView() {
+      const tbody = document.getElementById("productTable");
+      if (!tbody) return;
+      tbody.innerHTML = "";
+      viewMode = "combined";
+      currentActiveSheet = "Biasa";
+
+      const biasaProducts = allProducts["Biasa"] || {};
+      const grosirProducts = allProducts["Grosir"] || {};
+      const allBarcodes = new Set([...Object.keys(biasaProducts), ...Object.keys(grosirProducts)]);
+
+      products = {};
+      for (const barcode of allBarcodes) {
+        const biasa = biasaProducts[barcode];
+        const grosir = grosirProducts[barcode];
+        const name = (biasa && biasa.name) || (grosir && grosir.name) || "Unknown";
+        const category = (biasa && biasa.category) || (grosir && grosir.category) || "";
+        const biasaPrice = biasa ? biasa.singlePrice : 0;
+        const grosirPrice = grosir ? grosir.singlePrice : 0;
+        const primary = biasa || grosir;
+        const tiers = primary.tiers || [];
+
+        products[barcode] = { barcode, name, category, singlePrice: biasaPrice || grosirPrice, tiers };
+
+        addProductRowToDOM(barcode, name, category, biasaPrice, grosirPrice,
+          tiers[0]?.min || 0, tiers[0]?.totalPrice || 0,
+          tiers[1]?.min || 0, tiers[1]?.totalPrice || 0,
+          tiers[2]?.min || 0, tiers[2]?.totalPrice || 0);
+      }
+
+      document.querySelectorAll(".view-toggle-btn").forEach(btn => {
+        const view = btn.getAttribute("data-view");
+        if (view === "combined") {
+          btn.classList.add("bg-blue-600", "text-white");
+          btn.classList.remove("bg-gray-700", "text-gray-200", "hover:bg-gray-600");
+        } else {
+          btn.classList.remove("bg-blue-600", "text-white");
+          btn.classList.add("bg-gray-700", "text-gray-200", "hover:bg-gray-600");
+        }
+      });
+
+      const searchInput = document.getElementById("productSearchInput");
+      if (searchInput) searchInput.value = "";
+      applyProductFilter();
+      applyColumnVisibility();
+      updateAllAddButtons();
+    }
+
+    function switchView(view) {
+      if (view === "combined") {
+        renderCombinedView();
+      } else if (view === "biasa") {
+        renderSheetView("Biasa");
+      } else if (view === "grosir") {
+        renderSheetView("Grosir");
       }
     }
 
@@ -1092,8 +1156,10 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        // Reload current sheet from cache
-        await loadSheet(currentActiveSheet);
+        // Reload data from cache
+        await loadSheetData("Biasa");
+        await loadSheetData("Grosir");
+        switchView(viewMode);
         showTemporaryToast("✅ Synced & loaded — file saved to Downloads");
       } catch (err) {
         showTemporaryToast("❌ Sync failed: " + err.message);
@@ -1109,7 +1175,8 @@
       const tbody = document.getElementById("productTable");
       if (tbody) tbody.innerHTML = "";
       products = {};
-      allProducts["Demo"] = {};
+      allProducts["Biasa"] = {};
+      allProducts["Grosir"] = {};
       fallback.forEach(cols => {
         const [barcode, name, cat, single, m1, t1, m2, t2, m3, t3] = cols.map(c => c.trim());
         const singlePrice = parseFloat(single) || 0;
@@ -1117,13 +1184,18 @@
         if (parseInt(m1) > 0 && parseFloat(t1) > 0) tiers.push({ min: parseInt(m1), totalPrice: parseFloat(t1) });
         if (parseInt(m2) > 0 && parseFloat(t2) > 0) tiers.push({ min: parseInt(m2), totalPrice: parseFloat(t2) });
         if (parseInt(m3) > 0 && parseFloat(t3) > 0) tiers.push({ min: parseInt(m3), totalPrice: parseFloat(t3) });
-        products[barcode] = { barcode, name, category: cat, singlePrice, tiers };
-        allProducts["Demo"][barcode] = products[barcode];
-        addProductRowToDOM(barcode, name, cat, singlePrice, m1, parseFloat(t1), m2, parseFloat(t2), m3, parseFloat(t3));
+        allProducts["Biasa"][barcode] = { barcode, name, category: cat, singlePrice, tiers };
       });
-      currentActiveSheet = "Demo (Fallback)";
-      applyProductFilter();
-      applyColumnVisibility();
+      fallback.forEach(cols => {
+        const [barcode, name, cat, single, m1, t1, m2, t2, m3, t3] = cols.map(c => c.trim());
+        const grosirPrice = (parseFloat(single) * 0.9) || 0;
+        const tiers = [];
+        if (parseInt(m1) > 0 && parseFloat(t1) > 0) tiers.push({ min: parseInt(m1), totalPrice: parseFloat(t1) * 0.9 });
+        if (parseInt(m2) > 0 && parseFloat(t2) > 0) tiers.push({ min: parseInt(m2), totalPrice: parseFloat(t2) * 0.9 });
+        if (parseInt(m3) > 0 && parseFloat(t3) > 0) tiers.push({ min: parseInt(m3), totalPrice: parseFloat(t3) * 0.9 });
+        allProducts["Grosir"][barcode] = { barcode, name, category: cat, singlePrice: grosirPrice, tiers };
+      });
+      renderCombinedView();
     }
 
     async function initialize() {
@@ -1138,14 +1210,14 @@
         }
       });
       try {
-        await loadSheet("Biasa");
-        if (Object.keys(products).length === 0) throw new Error("No products");
+        await loadSheetData("Biasa");
+        if (Object.keys(allProducts["Biasa"] || {}).length === 0) throw new Error("No products");
+        await loadSheetData("Grosir");
       } catch (e) {
         console.warn("Real sheet load failed, using fallback demo", e);
         insertFallbackDemoForSheet();
       }
-      updateAllAddButtons();
-      applyColumnVisibility();
+      renderCombinedView();
       updateSourceToggleUI();
 
       const checkoutBtn = document.getElementById("checkout");
@@ -1156,10 +1228,12 @@
         });
       }
 
-      const btnBiasa = document.getElementById("toggleBiasa");
-      const btnGrosir = document.getElementById("toggleGrosir");
-      if (btnBiasa) btnBiasa.addEventListener("click", () => { if (!isLoading && currentActiveSheet !== "Biasa") loadSheet("Biasa"); });
-      if (btnGrosir) btnGrosir.addEventListener("click", () => { if (!isLoading && currentActiveSheet !== "Grosir") loadSheet("Grosir"); });
+      document.querySelectorAll(".view-toggle-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          if (isLoading) return;
+          switchView(btn.getAttribute("data-view"));
+        });
+      });
       document.getElementById("syncBtn")?.addEventListener("click", syncSheet);
       document.getElementById("sourceToggle")?.addEventListener("click", toggleDataSource);
 
