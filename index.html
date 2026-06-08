@@ -105,7 +105,7 @@
             <thead class="bg-gray-800 border-b border-gray-700">
               <tr class="text-left text-gray-300 font-semibold">
                 <th class="px-4 py-3 hidden md:table-cell">Barcode</th><th class="px-4 py-3">Name</th><th class="px-4 py-3 hidden md:table-cell">Category</th>
-                <th class="px-4 py-3">Biasa</th><th class="px-4 py-3">Grosir</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Min (B1)</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Bulk 1 (total)</th>
+                <th class="px-4 py-3">Biasa</th><th class="px-4 py-3 hidden md:table-cell">Grosir</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Min (B1)</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Bulk 1 (total)</th>
                 <th class="px-4 py-3 bulk-col hidden md:table-cell">Min (B2)</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Bulk 2 (total)</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Min (B3)</th>
                 <th class="px-4 py-3 bulk-col hidden md:table-cell">Bulk 3 (total)</th><th class="px-4 py-3 hidden md:table-cell">Qty</th><th class="px-4 py-3">Action</th>
               </tr>
@@ -224,7 +224,7 @@
     function getVisibleColumnCount() {
       const isMobile = window.innerWidth < 768;
       if (isMobile) {
-        const baseCols = 4; // Name, Biasa, Grosir, Action
+        const baseCols = 3; // Name, Price, Action
         return showBulkColumns ? baseCols + 6 : baseCols;
       }
       const totalCols = 13;
@@ -237,7 +237,7 @@
       if (!table) return;
 
       const theadRows = table.querySelectorAll("thead tr");
-      const mobileHidden = (idx) => idx === 0 || idx === 2 || idx === 11;
+      const mobileHidden = (idx) => idx === 0 || idx === 2 || idx === 4 || idx === 11;
 
       const isMobile = window.innerWidth < 768;
 
@@ -339,7 +339,7 @@
         <td class="px-4 py-2.5 font-medium">${escapeHtml(name)}</td>
         <td class="px-4 py-2.5 text-gray-300 hidden md:table-cell">${escapeHtml(category)}</td>
         <td class="px-4 py-2.5 font-mono text-emerald-300">${biasaPrice > 0 ? `Rp. ${biasaPrice.toFixed(2)}` : '-'}</td>
-        <td class="px-4 py-2.5 font-mono text-amber-300">${hasGrosir ? `Rp. ${grosirPrice.toFixed(2)}` : '-'}</td>
+        <td class="px-4 py-2.5 font-mono text-amber-300 hidden md:table-cell">${hasGrosir ? `Rp. ${grosirPrice.toFixed(2)}` : '-'}</td>
         <td class="px-4 py-2.5 bulk-col hidden md:table-cell">${min1 || '-'}</td>
         <td class="px-4 py-2.5 font-mono text-blue-300 text-xs bulk-col hidden md:table-cell">${fmtPrice(total1)}</td>
         <td class="px-4 py-2.5 bulk-col hidden md:table-cell">${min2 || '-'}</td>
