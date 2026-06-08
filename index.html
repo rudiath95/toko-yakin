@@ -105,7 +105,7 @@
             <thead class="bg-gray-800 border-b border-gray-700">
               <tr class="text-left text-gray-300 font-semibold">
                 <th class="px-4 py-3 hidden md:table-cell">Barcode</th><th class="px-4 py-3">Name</th><th class="px-4 py-3 hidden md:table-cell">Category</th>
-                <th class="px-4 py-3"><span class="md:hidden">Price</span><span class="hidden md:inline">Biasa</span></th><th class="px-4 py-3 hidden md:table-cell">Grosir</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Min (B1)</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Bulk 1 (total)</th>
+                <th class="px-4 py-3">Price</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Min (B1)</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Bulk 1 (total)</th>
                 <th class="px-4 py-3 bulk-col hidden md:table-cell">Min (B2)</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Bulk 2 (total)</th><th class="px-4 py-3 bulk-col hidden md:table-cell">Min (B3)</th>
                 <th class="px-4 py-3 bulk-col hidden md:table-cell">Bulk 3 (total)</th><th class="px-4 py-3 hidden md:table-cell">Qty</th><th class="px-4 py-3">Action</th>
               </tr>
@@ -227,7 +227,7 @@
         const baseCols = 3; // Name, Price, Action
         return showBulkColumns ? baseCols + 6 : baseCols;
       }
-      const totalCols = 13;
+      const totalCols = 12;
       return showBulkColumns ? totalCols : totalCols - 6;
     }
 
@@ -237,14 +237,14 @@
       if (!table) return;
 
       const theadRows = table.querySelectorAll("thead tr");
-      const mobileHidden = (idx) => idx === 0 || idx === 2 || idx === 4 || idx === 11;
+      const mobileHidden = (idx) => idx === 0 || idx === 2 || idx === 10;
 
       const isMobile = window.innerWidth < 768;
 
       theadRows.forEach(row => {
         const thCells = row.querySelectorAll("th");
         thCells.forEach((th, idx) => {
-          if (idx >= 5 && idx <= 10) {
+          if (idx >= 4 && idx <= 9) {
             th.style.display = (showBulkColumns && !isMobile) ? "table-cell" : "none";
           } else if (mobileHidden(idx)) {
             th.style.display = "";
@@ -260,7 +260,7 @@
         rows.forEach(row => {
           const cells = row.querySelectorAll("td");
           cells.forEach((cell, idx) => {
-            if (idx >= 5 && idx <= 10) {
+            if (idx >= 4 && idx <= 9) {
               cell.style.display = (showBulkColumns && !isMobile) ? "table-cell" : "none";
             } else if (mobileHidden(idx)) {
               cell.style.display = "";
@@ -326,11 +326,10 @@
     }
 
     // ---------- RENDER PRODUCT ROW (dynamic row creation) ----------
-    function addProductRowToDOM(barcode, name, category, biasaPrice, grosirPrice, min1, total1, min2, total2, min3, total3) {
+    function addProductRowToDOM(barcode, name, category, price, hasGrosir, min1, total1, min2, total2, min3, total3) {
       const tbody = document.getElementById("productTable");
       if (!tbody) return;
       const tr = document.createElement("tr");
-      const hasGrosir = grosirPrice != null && grosirPrice > 0;
       tr.className = "product-row hover:bg-gray-800/40 transition-colors" + (hasGrosir ? " bg-gray-800/40" : "");
       tr.setAttribute('data-barcode', barcode);
       const fmtPrice = (val) => (val && !isNaN(val) && val > 0) ? `Rp. ${val.toFixed(2)}` : '-';
@@ -338,8 +337,7 @@
         <td class="px-4 py-2.5 font-mono text-xs hidden md:table-cell">${escapeHtml(barcode)}</td>
         <td class="px-4 py-2.5 font-medium">${escapeHtml(name)}</td>
         <td class="px-4 py-2.5 text-gray-300 hidden md:table-cell">${escapeHtml(category)}</td>
-        <td class="px-4 py-2.5 font-mono text-emerald-300">${biasaPrice > 0 ? `Rp. ${biasaPrice.toFixed(2)}` : '-'}</td>
-        <td class="px-4 py-2.5 font-mono text-amber-300 hidden md:table-cell">${hasGrosir ? `Rp. ${grosirPrice.toFixed(2)}` : '-'}</td>
+        <td class="px-4 py-2.5 font-mono text-emerald-300">${price > 0 ? `Rp. ${price.toFixed(2)}` : '-'}</td>
         <td class="px-4 py-2.5 bulk-col hidden md:table-cell">${min1 || '-'}</td>
         <td class="px-4 py-2.5 font-mono text-blue-300 text-xs bulk-col hidden md:table-cell">${fmtPrice(total1)}</td>
         <td class="px-4 py-2.5 bulk-col hidden md:table-cell">${min2 || '-'}</td>
@@ -1052,7 +1050,7 @@
       for (const barcode in products) {
         const p = products[barcode];
         const tiers = p.tiers || [];
-        addProductRowToDOM(p.barcode, p.name, p.category, p.singlePrice, null,
+        addProductRowToDOM(p.barcode, p.name, p.category, p.singlePrice, false,
           tiers[0]?.min || 0, tiers[0]?.totalPrice || 0,
           tiers[1]?.min || 0, tiers[1]?.totalPrice || 0,
           tiers[2]?.min || 0, tiers[2]?.totalPrice || 0);
@@ -1093,14 +1091,14 @@
         const grosir = grosirProducts[barcode];
         const name = (biasa && biasa.name) || (grosir && grosir.name) || "Unknown";
         const category = (biasa && biasa.category) || (grosir && grosir.category) || "";
-        const biasaPrice = biasa ? biasa.singlePrice : 0;
-        const grosirPrice = grosir ? grosir.singlePrice : 0;
+        const price = biasa ? biasa.singlePrice : (grosir ? grosir.singlePrice : 0);
+        const hasGrosir = !!grosir;
         const primary = biasa || grosir;
         const tiers = primary.tiers || [];
 
-        products[barcode] = { barcode, name, category, singlePrice: biasaPrice || grosirPrice, tiers };
+        products[barcode] = { barcode, name, category, singlePrice: price, tiers };
 
-        addProductRowToDOM(barcode, name, category, biasaPrice, grosirPrice,
+        addProductRowToDOM(barcode, name, category, price, hasGrosir,
           tiers[0]?.min || 0, tiers[0]?.totalPrice || 0,
           tiers[1]?.min || 0, tiers[1]?.totalPrice || 0,
           tiers[2]?.min || 0, tiers[2]?.totalPrice || 0);
