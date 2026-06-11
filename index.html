@@ -53,6 +53,20 @@
     @media (max-width: 767px) {
       .mobile-hidden { display: none !important; }
     }
+
+    .drag-handle {
+      cursor: grab;
+      user-select: none;
+      touch-action: none;
+    }
+    .drag-handle:active { cursor: grabbing; }
+    .drag-over {
+      border-top: 2px solid #60a5fa !important;
+    }
+    .dragging {
+      opacity: 0.4;
+    }
+
   </style>
 </head>
 <body class="bg-gray-900 text-gray-100 antialiased min-h-screen">
@@ -153,6 +167,7 @@
         <table class="w-full text-sm border-collapse">
           <thead class="bg-gray-700/60 sticky top-0 z-10 backdrop-blur-sm">
             <tr class="text-left text-gray-200 font-semibold text-xs uppercase tracking-wider">
+              <th class="px-2 py-2.5 text-center w-6">#</th>
               <th class="px-2 py-2.5 hidden md:table-cell">Barcode</th>
               <th class="px-2 py-2.5">Name</th>
               <th class="px-2 py-2.5 text-center">Qty</th>
@@ -544,7 +559,12 @@
 
         const tr = document.createElement("tr");
         tr.className = "border-b border-gray-700/50 hover:bg-gray-700/30 transition";
+        tr.draggable = true;
+        tr.dataset.index = idx;
         tr.innerHTML = `
+          <td class="px-1 py-2.5 text-center w-6">
+            <span class="drag-handle text-gray-400 text-lg leading-none select-none" title="Drag to reorder">⋮</span>
+          </td>
           <td class="px-2 py-2.5 font-mono text-xs text-gray-300 hidden md:table-cell">${escapeHtml(item.barcode)}</td>
           <td class="px-2 py-2.5 font-medium text-gray-200">${escapeHtml(item.name)}</td>
           <td class="px-2 py-2.5 text-center">
@@ -588,6 +608,36 @@
         removeBtn.addEventListener("click", () => {
           cart.splice(idx, 1);
           renderCart();
+        });
+
+        tr.addEventListener("dragstart", (e) => {
+          e.dataTransfer.effectAllowed = "move";
+          e.dataTransfer.setData("text/plain", idx);
+          tr.classList.add("dragging");
+        });
+        tr.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          tr.classList.add("drag-over");
+        });
+        tr.addEventListener("dragleave", () => {
+          tr.classList.remove("drag-over");
+        });
+        tr.addEventListener("drop", (e) => {
+          e.preventDefault();
+          tr.classList.remove("drag-over");
+          const fromIdx = parseInt(e.dataTransfer.getData("text/plain"));
+          const toIdx = idx;
+          if (fromIdx !== toIdx) {
+            const [moved] = cart.splice(fromIdx, 1);
+            cart.splice(toIdx, 0, moved);
+            renderCart();
+          }
+        });
+        tr.addEventListener("dragend", () => {
+          document.querySelectorAll("#cart tr").forEach(r => {
+            r.classList.remove("dragging", "drag-over");
+          });
         });
 
         cartTbody.appendChild(tr);
@@ -1242,6 +1292,8 @@
       document.getElementById("exportCartBtn")?.addEventListener("click", exportCart);
       document.getElementById("importCartBtn")?.addEventListener("click", importCart);
       document.addEventListener("keydown", (e) => { if (e.key === "Escape" && cartOpen) setCartOpen(false); });
+
+
     }
 
     initialize();
