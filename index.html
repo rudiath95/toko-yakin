@@ -360,7 +360,7 @@
         <td class="px-4 py-2.5 bulk-col hidden md:table-cell">${min3 || '-'}</td>
         <td class="px-4 py-2.5 font-mono text-blue-300 text-xs bulk-col hidden md:table-cell">${fmtPrice(total3)}</td>
         <td class="px-4 py-2.5 hidden md:table-cell">
-          <input type="number" min="1" value="1" class="qty-input w-20 px-2 py-1.5 bg-gray-800 border border-gray-600 rounded-md text-white focus:ring-1 focus:ring-blue-500 outline-none" />
+          <input type="number" min="1" value="1" class="qty-input w-20 px-2 py-1.5 bg-gray-800 border border-gray-600 rounded-md text-white focus:ring-1 focus:ring-blue-500 outline-none" onfocus="this.select()" />
         </td>
         <td class="px-4 py-2.5">
           <div class="add-btn-container" data-barcode="${barcode}"></div>
