@@ -5,3 +5,7 @@ URL="https://docs.google.com/spreadsheets/d/e/2PACX-1vQNgrO1HT1fanpNDiFtL9RQazcV
 
 curl -fSL -o TokoYakin.xlsx "$URL"
 echo "Downloaded TokoYakin.xlsx"
+
+git add TokoYakin.xlsx
+git commit -m "update spreadsheet data"
+git push
