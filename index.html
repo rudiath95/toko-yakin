@@ -341,11 +341,12 @@
     }
 
     // ---------- RENDER PRODUCT ROW (dynamic row creation) ----------
-    function addProductRowToDOM(barcode, name, category, price, hasGrosir, min1, total1, min2, total2, min3, total3) {
+    function addProductRowToDOM(barcode, name, category, price, hasGrosir, min1, total1, min2, total2, min3, total3, type) {
       const tbody = document.getElementById("productTable");
       if (!tbody) return;
       const tr = document.createElement("tr");
-      tr.className = "product-row hover:bg-gray-800/40 transition-colors" + (hasGrosir ? " bg-gray-800/70" : "");
+      const isKrt = type === 'KRT';
+      tr.className = "product-row hover:bg-gray-800/40 transition-colors" + (hasGrosir ? " bg-gray-800/70" : "") + (isKrt ? " text-red-400" : "");
       tr.setAttribute('data-barcode', barcode);
       const fmtPrice = (val) => (val && !isNaN(val) && val > 0) ? `Rp. ${val.toFixed(2)}` : '-';
       tr.innerHTML = `
@@ -1078,7 +1079,7 @@
           if (min2 > 0 && total2 > 0) tiers.push({ min: min2, totalPrice: total2 });
           if (min3 > 0 && total3 > 0) tiers.push({ min: min3, totalPrice: total3 });
 
-          allProducts[sheetName][barcode] = { barcode, name, category, singlePrice, tiers };
+          allProducts[sheetName][barcode] = { barcode, name, category, singlePrice, tiers, type: (row[10] || "").toString().trim() };
           productCount++;
         }
         if (productCount === 0) throw new Error(`No valid products found in sheet "${sheetName}"`);
@@ -1103,7 +1104,7 @@
         addProductRowToDOM(p.barcode, p.name, p.category, p.singlePrice, false,
           tiers[0]?.min || 0, tiers[0]?.totalPrice || 0,
           tiers[1]?.min || 0, tiers[1]?.totalPrice || 0,
-          tiers[2]?.min || 0, tiers[2]?.totalPrice || 0);
+          tiers[2]?.min || 0, tiers[2]?.totalPrice || 0, p.type || "");
       }
 
       document.querySelectorAll(".view-toggle-btn").forEach(btn => {
@@ -1146,12 +1147,12 @@
         const primary = biasa || grosir;
         const tiers = primary.tiers || [];
 
-        products[barcode] = { barcode, name, category, singlePrice: price, tiers };
+        products[barcode] = { barcode, name, category, singlePrice: price, tiers, type: primary.type || "" };
 
         addProductRowToDOM(barcode, name, category, price, hasGrosir,
           tiers[0]?.min || 0, tiers[0]?.totalPrice || 0,
           tiers[1]?.min || 0, tiers[1]?.totalPrice || 0,
-          tiers[2]?.min || 0, tiers[2]?.totalPrice || 0);
+          tiers[2]?.min || 0, tiers[2]?.totalPrice || 0, primary.type || "");
       }
 
       document.querySelectorAll(".view-toggle-btn").forEach(btn => {
