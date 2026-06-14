@@ -382,7 +382,8 @@
           name: productData.name,
           singlePrice: productData.singlePrice,
           tiers: tiersCopy,
-          qty: qty
+          qty: qty,
+          type: productData.type || ""
         });
       }
       renderCart();
@@ -681,7 +682,8 @@
         receiptItems.push({
           name: item.name,
           qty: item.qty,
-          subtotal: subtotal
+          subtotal: subtotal,
+          type: item.type || ""
         });
       }
 
@@ -759,6 +761,9 @@
               margin-bottom: 4px;
               line-height: 1.25;
             }
+            .receipt-type-row {
+              margin-bottom: 10px;
+            }
             .item-name {
               flex: 2;
               word-break: break-word;
@@ -819,6 +824,13 @@
                 <span class="item-qty">${item.qty}</span>
                 <div class="item-price">Rp${item.subtotal}</div>
               </div>
+              ${item.type ? `
+              <div class="receipt-item receipt-type-row">
+                <span class="item-name"></span>
+                <span class="item-qty"></span>
+                <div class="item-price" style="font-size:10px;color:#555;font-weight:normal">${escapeHtml(item.type)}</div>
+              </div>
+              ` : ''}
             `).join('')}
 
             <div class="total-row">
