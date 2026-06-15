@@ -683,7 +683,8 @@
           name: item.name,
           qty: item.qty,
           subtotal: subtotal,
-          type: item.type || ""
+          type: item.type || "",
+          singlePrice: item.singlePrice
         });
       }
 
@@ -746,7 +747,7 @@
               font-size: 12px;
               font-weight: bold;
             }
-            /* header row for items (Name, Qty, Subtotal) using flex */
+            /* header row for items using flex (2 columns) */
             .receipt-header {
               display: flex;
               justify-content: space-between;
@@ -758,27 +759,32 @@
               display: flex;
               justify-content: space-between;
               align-items: baseline;
-              margin-bottom: 4px;
               line-height: 1.25;
-            }
-            .receipt-type-row {
-              margin-bottom: 10px;
             }
             .item-name {
               flex: 2;
               word-break: break-word;
               padding-right: 4px;
             }
-            .item-qty {
-              flex: 0.6;
-              text-align: center;
-            }
-            .item-price {
-              flex: 1.2;
+            .item-sub {
+              flex: 1;
               text-align: right;
               white-space: nowrap;
-              margin-right: 8px;
-              font-weight: semibold;
+              font-weight: bold;
+            }
+            .receipt-sub-row {
+              margin-bottom: 6px;
+              padding-left: 0;
+            }
+            .receipt-sub-row .item-name {
+              font-weight: normal;
+              color: #555;
+              font-size: 10px;
+            }
+            .receipt-sub-row .item-sub {
+              font-weight: normal;
+              font-size: 10px;
+              color: #555;
             }
             .total-row {
               margin-top: 6px;
@@ -812,25 +818,20 @@
 
             <!-- Header row (labels) -->
             <div class="receipt-header">
-              <span class="item-name">Item</span>
-              <span class="item-qty">Qty</span>
-              <span class="item-price">Sub</span>
+              <span class="item-name">Product Name</span>
+              <span class="item-sub">Sub</span>
             </div>
 
-            <!-- Dynamic items list (div-based) -->
+            <!-- Dynamic items list (div-based, 2 rows per item) -->
             ${receiptItems.map(item => `
               <div class="receipt-item">
                 <span class="item-name">${escapeHtml(item.name)}</span>
-                <span class="item-qty">${item.qty}</span>
-                <div class="item-price">Rp${item.subtotal}</div>
+                <span class="item-sub">${escapeHtml(item.type)}</span>
               </div>
-              ${item.type ? `
-              <div class="receipt-item receipt-type-row">
-                <span class="item-name"></span>
-                <span class="item-qty"></span>
-                <div class="item-price" style="font-size:10px;color:#555;font-weight:normal">${escapeHtml(item.type)}</div>
+              <div class="receipt-item receipt-sub-row">
+                <span class="item-name">Rp${item.singlePrice} x ${item.qty}</span>
+                <span class="item-sub">Rp${item.subtotal}</span>
               </div>
-              ` : ''}
             `).join('')}
 
             <div class="total-row">
