@@ -188,6 +188,14 @@
         <span class="text-gray-300">Total</span>
         <span id="total" class="text-2xl font-extrabold text-emerald-400 tracking-tight">Rp. 0.00</span>
       </div>
+      <div class="flex justify-between items-center mb-3">
+        <label for="uangPembeli" class="text-gray-300 text-sm font-medium">Uang Pembeli</label>
+        <input type="number" id="uangPembeli" class="w-40 text-right bg-gray-700/80 text-white px-3 py-2 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0" min="0" value="0" inputmode="numeric">
+      </div>
+      <div class="flex justify-between items-center mb-4 text-base font-bold">
+        <span class="text-gray-300">Kembalian</span>
+        <span id="kembalian" class="text-2xl font-extrabold text-yellow-400 tracking-tight">Rp. 0.00</span>
+      </div>
       <button id="checkout" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-semibold py-2.5 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -645,6 +653,7 @@
         cartTbody.appendChild(tr);
       }
       document.getElementById("total").textContent = `Rp. ${overallTotal.toFixed(2)}`;
+      hitungKembalian();
       saveCart();
       updateAllAddButtons();
     }
@@ -663,10 +672,23 @@
 
     function clearCart() {
       cart = [];
+      const uangInput = document.getElementById("uangPembeli");
+      if (uangInput) uangInput.value = "0";
       renderCart();
     }
 
-    // ---------- PRINT RECEIPT with DIV-BASED LAYOUT (no tables, 58mm thermal friendly) ----------
+    function hitungKembalian() {
+      const totalEl = document.getElementById("total");
+      const uangEl = document.getElementById("uangPembeli");
+      const kembalianEl = document.getElementById("kembalian");
+      if (!totalEl || !uangEl || !kembalianEl) return;
+      const total = parseFloat(totalEl.textContent.replace(/^Rp\.?\s*/i, "")) || 0;
+      const uang = parseFloat(uangEl.value) || 0;
+      const kembalian = uang - total;
+      kembalianEl.textContent = `Rp. ${kembalian.toFixed(2)}`;
+      kembalianEl.className = `text-2xl font-extrabold tracking-tight ${kembalian < 0 ? 'text-red-400' : 'text-yellow-400'}`;
+    }
+
     function showThermalReceipt() {
       if (cart.length === 0) {
         alert("🛒 Cart is empty. Nothing to print.");
@@ -676,6 +698,7 @@
       // Compute totals per item and overall
       const receiptItems = [];
       let grandTotal = 0;
+      const uangPembeli = parseFloat(document.getElementById("uangPembeli")?.value) || 0;
       for (const item of cart) {
         const { total: subtotal } = computeStackablePriceFromSnapshot(item.singlePrice, item.tiers, item.qty);
         grandTotal += subtotal;
@@ -837,6 +860,16 @@
               <span>TOTAL</span>
               <div style="margin-right: 8px">Rp${grandTotal}</div>
             </div>
+            ${uangPembeli > 0 ? `
+            <div class="receipt-item" style="margin-top: 4px;">
+              <span class="item-name">Uang Pembeli</span>
+              <span class="item-sub">Rp${uangPembeli.toFixed(2)}</span>
+            </div>
+            <div class="receipt-item" style="font-weight: bold;">
+              <span class="item-name">Kembalian</span>
+              <span class="item-sub">Rp${(uangPembeli - grandTotal).toFixed(2)}</span>
+            </div>
+            ` : ''}
             <div class="footer">
               🧾 Terima kasih!<br/>
               Simpan struk ini sebagai bukti
@@ -1287,6 +1320,12 @@
           e.preventDefault();
           showThermalReceipt();   // print preview, cart is NOT cleared
         });
+      }
+
+      const uangInput = document.getElementById("uangPembeli");
+      if (uangInput) {
+        uangInput.addEventListener("input", hitungKembalian);
+        uangInput.addEventListener("focus", () => uangInput.select());
       }
 
       document.querySelectorAll(".view-toggle-btn").forEach(btn => {
