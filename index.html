@@ -5,8 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>POS · Toko Yakin</title>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#111827">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <link href="dist/output.css" rel="stylesheet">
-  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+  <script src="xlsx.full.min.js"></script>
   <style>
     .product-row { transition: all 0.1s ease; }
     .cart-scroll::-webkit-scrollbar { width: 5px; }
@@ -71,6 +74,11 @@
 </head>
 <body class="bg-gray-900 text-gray-100 antialiased min-h-screen">
 
+  <!-- offline banner -->
+  <div id="offlineBanner" class="hidden fixed top-0 left-0 right-0 z-50 bg-red-600/90 backdrop-blur-sm text-white text-center text-xs font-semibold py-1.5 tracking-wide shadow-lg">
+    📴 OFFLINE MODE — using cached data
+  </div>
+
   <!-- main content (left, 60% width) -->
   <div class="md:mr-[40%]">
     <div class="p-6 pb-12">
@@ -83,7 +91,7 @@
           <button data-view="combined" class="view-toggle-btn px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-blue-600 text-white shadow-sm">👥 All</button>
           <button data-view="biasa" class="view-toggle-btn px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-gray-700 text-gray-200 hover:bg-gray-600">📄 Biasa</button>
           <button data-view="grosir" class="view-toggle-btn px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-gray-700 text-gray-200 hover:bg-gray-600">📦 Grosir</button>
-          <button id="sourceToggle" class="px-2.5 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-blue-600 text-white shadow-sm" title="Data source: Local file">🌐</button>
+          <button id="sourceToggle" class="px-2.5 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-blue-600 text-white shadow-sm" title="Online mode">🌐</button>
           <button id="syncBtn" class="mobile-hidden inline-flex px-3 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-gray-700 text-gray-200 hover:bg-gray-600 items-center gap-1" title="Download latest spreadsheet from Google Sheets">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
             Sync
@@ -229,6 +237,7 @@
     let cartOpen = false;
     let cachedSheetData = null;     // synced xlsx data (Uint8Array)
     let useGoogleSource = false;    // toggle: true = Google Sheets, false = local file
+    let offlineMode = false;
 
     const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNgrO1HT1fanpNDiFtL9RQazcVeDJ4M1RuxJx-I9tBk_ycFqYUoDj8I6ZCnQKBIwxBRHjnhP_0_Kge/pub?output=xlsx";
 
@@ -677,6 +686,15 @@
       renderCart();
     }
 
+    function updateOfflineUI() {
+      const banner = document.getElementById("offlineBanner");
+      const sourceBtn = document.getElementById("sourceToggle");
+      const syncBtn = document.getElementById("syncBtn");
+      if (banner) banner.classList.toggle("hidden", !offlineMode);
+      if (sourceBtn) sourceBtn.style.opacity = offlineMode ? "0.4" : "1";
+      if (syncBtn) syncBtn.style.opacity = offlineMode ? "0.4" : "1";
+    }
+
     function hitungKembalian() {
       const totalEl = document.getElementById("total");
       const uangEl = document.getElementById("uangPembeli");
@@ -1039,27 +1057,33 @@
       });
     }
 
-    // ---------- TOGGLE DATA SOURCE (local / Google) ----------
-    function updateSourceToggleUI() {
+    // ---------- TOGGLE ONLINE / OFFLINE ----------
+    function updateOnlineToggleUI() {
       const btn = document.getElementById("sourceToggle");
       if (!btn) return;
-      if (useGoogleSource) {
-        btn.innerHTML = "🇬";
-        btn.title = "Data source: Google Sheets";
-        btn.classList.add("bg-blue-600", "text-white", "shadow-sm");
+      if (offlineMode) {
+        btn.innerHTML = "📴";
+        btn.title = "Offline mode — tap for online";
+        btn.classList.add("bg-red-600", "text-white", "shadow-sm");
         btn.classList.remove("bg-gray-700", "text-gray-200", "hover:bg-gray-600");
       } else {
         btn.innerHTML = "🌐";
-        btn.title = "Data source: Local file";
+        btn.title = "Online mode — tap for offline";
         btn.classList.add("bg-blue-600", "text-white", "shadow-sm");
         btn.classList.remove("bg-gray-700", "text-gray-200", "hover:bg-gray-600");
       }
     }
 
-    async function toggleDataSource() {
-      useGoogleSource = !useGoogleSource;
-      if (useGoogleSource) cachedSheetData = null; // force fresh fetch from Google
-      updateSourceToggleUI();
+    async function toggleOnlineMode() {
+      offlineMode = !offlineMode;
+      updateOnlineToggleUI();
+      updateOfflineUI();
+      if (offlineMode) {
+        useGoogleSource = false;
+        showTemporaryToast("📴 Offline mode — using local TokoYakin.xlsx");
+      } else {
+        showTemporaryToast("📶 Online mode — fetching live data");
+      }
       allProducts = {};
       await loadSheetData("Biasa");
       await loadSheetData("Grosir");
@@ -1230,6 +1254,10 @@
 
     // ---------- SYNC SHEET (download latest from Google Sheets) ----------
     async function syncSheet() {
+      if (offlineMode) {
+        showTemporaryToast("📴 Cannot sync while offline mode is active");
+        return;
+      }
       try {
         showTemporaryToast("⏳ Syncing from Google Sheets...");
         const response = await fetch(GOOGLE_SHEET_URL);
@@ -1237,9 +1265,8 @@
         const arrayBuffer = await response.arrayBuffer();
         // Cache in memory so it loads instantly
         cachedSheetData = arrayBuffer;
-        // Switch to Google mode to display synced data
+        // Switch to Google Sheets as data source
         useGoogleSource = true;
-        updateSourceToggleUI();
         // Trigger download (goes straight to Downloads, no dialog)
         const blob = new Blob([arrayBuffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
         const url = URL.createObjectURL(blob);
@@ -1296,6 +1323,14 @@
       initSearchEvents();
       setupBulkToggle();
       loadCart();
+
+      // Register service worker for offline support
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(e => {
+          console.warn('Service worker registration failed:', e);
+        });
+      }
+
       document.getElementById("clearCartBtn")?.addEventListener("click", () => {
         if (cart.length === 0) return;
         if (confirm("Clear all items from cart?")) {
@@ -1303,22 +1338,36 @@
           showTemporaryToast("🗑️ Cart cleared");
         }
       });
+
       try {
         await loadSheetData("Biasa");
         if (Object.keys(allProducts["Biasa"] || {}).length === 0) throw new Error("No products");
         await loadSheetData("Grosir");
       } catch (e) {
-        console.warn("Real sheet load failed, using fallback demo", e);
-        insertFallbackDemoForSheet();
+        if (!navigator.onLine) {
+          offlineMode = true;
+          updateOfflineUI();
+          useGoogleSource = false;
+          try {
+            await loadSheetData("Biasa");
+            await loadSheetData("Grosir");
+          } catch (e2) {
+            console.warn("Offline load failed too, using fallback demo", e2);
+            insertFallbackDemoForSheet();
+          }
+        } else {
+          console.warn("Real sheet load failed, using fallback demo", e);
+          insertFallbackDemoForSheet();
+        }
       }
       renderCombinedView();
-      updateSourceToggleUI();
+      updateOnlineToggleUI();
 
       const checkoutBtn = document.getElementById("checkout");
       if (checkoutBtn) {
         checkoutBtn.addEventListener("click", (e) => {
           e.preventDefault();
-          showThermalReceipt();   // print preview, cart is NOT cleared
+          showThermalReceipt();
         });
       }
 
@@ -1335,17 +1384,14 @@
         });
       });
       document.getElementById("syncBtn")?.addEventListener("click", syncSheet);
-      document.getElementById("sourceToggle")?.addEventListener("click", toggleDataSource);
+      document.getElementById("sourceToggle")?.addEventListener("click", toggleOnlineMode);
 
-      // mobile cart toggle
       document.getElementById("cartToggleBtn")?.addEventListener("click", toggleCart);
       document.getElementById("closeCartBtn")?.addEventListener("click", () => setCartOpen(false));
       document.getElementById("cartBackdrop")?.addEventListener("click", () => setCartOpen(false));
       document.getElementById("exportCartBtn")?.addEventListener("click", exportCart);
       document.getElementById("importCartBtn")?.addEventListener("click", importCart);
       document.addEventListener("keydown", (e) => { if (e.key === "Escape" && cartOpen) setCartOpen(false); });
-
-
     }
 
     initialize();

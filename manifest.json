@@ -1,0 +1,16 @@
+{
+  "name": "Toko Yakin POS",
+  "short_name": "Toko Yakin",
+  "description": "Point of Sale untuk Toko Yakin",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#111827",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}
