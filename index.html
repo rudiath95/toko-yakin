@@ -246,7 +246,7 @@
     let cartOpen = false;
     let cachedSheetData = null;     // synced xlsx data (Uint8Array)
     let useGoogleSource = false;    // toggle: true = Google Sheets, false = local file
-    let offlineMode = false;
+    let offlineMode = true;
 
     const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNgrO1HT1fanpNDiFtL9RQazcVeDJ4M1RuxJx-I9tBk_ycFqYUoDj8I6ZCnQKBIwxBRHjnhP_0_Kge/pub?output=xlsx";
 
@@ -1091,6 +1091,8 @@
         useGoogleSource = false;
         showTemporaryToast("📴 Offline mode — using local TokoYakin.xlsx");
       } else {
+        useGoogleSource = true;
+        cachedSheetData = null;
         showTemporaryToast("📶 Online mode — fetching live data");
       }
       allProducts = {};
@@ -1353,21 +1355,8 @@
         if (Object.keys(allProducts["Biasa"] || {}).length === 0) throw new Error("No products");
         await loadSheetData("Grosir");
       } catch (e) {
-        if (!navigator.onLine) {
-          offlineMode = true;
-          updateOfflineUI();
-          useGoogleSource = false;
-          try {
-            await loadSheetData("Biasa");
-            await loadSheetData("Grosir");
-          } catch (e2) {
-            console.warn("Offline load failed too, using fallback demo", e2);
-            insertFallbackDemoForSheet();
-          }
-        } else {
-          console.warn("Real sheet load failed, using fallback demo", e);
-          insertFallbackDemoForSheet();
-        }
+        console.warn("Local sheet load failed, using fallback demo", e);
+        insertFallbackDemoForSheet();
       }
       renderCombinedView();
       updateOnlineToggleUI();
