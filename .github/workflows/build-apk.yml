@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -19,9 +21,23 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Install web dependencies
+        run: npm install
+
+      - name: Build CSS
+        run: npm run build:css
+
+      - name: Install mobile dependencies
+        working-directory: mobile
+        run: npm install
+
       - name: Sync web files
         working-directory: mobile
         run: bash sync-app.sh
+
+      - name: Sync Capacitor plugins and assets
+        working-directory: mobile
+        run: npx cap sync android
 
       - name: Build APK
         working-directory: mobile/android
