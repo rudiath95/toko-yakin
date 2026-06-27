@@ -166,6 +166,14 @@
             <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v2a2 2 0 002 2h12a2 2 0 002-2v-2M7 10l5 5 5-5M12 3v12" /></svg>
             <span class="mobile-hidden">Import</span>
           </button>
+          <button id="saveCartBtn" class="text-xs font-medium text-emerald-300 hover:text-white bg-emerald-700/50 hover:bg-emerald-600 px-2 py-1 rounded-md transition" title="Save cart as new entry">
+            <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" /></svg>
+            <span class="mobile-hidden">Save</span>
+          </button>
+          <button id="savedCartsBtn" class="text-xs font-medium text-blue-300 hover:text-white bg-blue-700/50 hover:bg-blue-600 px-2 py-1 rounded-md transition" title="Browse saved carts">
+            <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+            <span class="mobile-hidden">Load</span>
+          </button>
           <button id="clearCartBtn" class="text-xs font-normal text-red-400 hover:text-red-300 bg-gray-700/50 hover:bg-red-900/50 px-2.5 py-1 rounded-md transition flex items-center gap-1">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
             <span class="mobile-hidden">Clear</span>
@@ -201,6 +209,10 @@
     </div>
 
     <div class="border-t border-gray-700/80 px-3 md:px-5 py-5 bg-gray-800/90 flex-shrink-0">
+      <div class="flex justify-between items-center mb-3">
+        <label for="customer" class="text-gray-300 text-sm font-medium">Customer</label>
+        <input type="text" id="customer" class="w-40 text-right bg-gray-700/80 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-500" placeholder="e.g. John">
+      </div>
       <div class="flex justify-between items-center mb-4 text-base font-bold">
         <span class="text-gray-300">Total</span>
         <span id="total" class="text-2xl font-extrabold text-emerald-400 tracking-tight">Rp. 0.00</span>
@@ -225,6 +237,22 @@
   <!-- mobile cart backdrop -->
   <div id="cartBackdrop" class="fixed inset-0 bg-black/50 z-20 hidden md:hidden transition-opacity duration-300"></div>
 
+  <!-- saved carts modal -->
+  <div id="savedCartsModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center transition-opacity duration-200">
+    <div class="bg-gray-800 rounded-xl w-full max-w-lg max-h-[70vh] overflow-y-auto mx-4 border border-gray-700 shadow-2xl">
+      <div class="flex items-center justify-between p-4 border-b border-gray-700 sticky top-0 bg-gray-800 z-10 rounded-t-xl">
+        <h3 class="text-lg font-bold flex items-center gap-2">
+          <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+          Saved Carts
+        </h3>
+        <button id="closeSavedCartsModal" class="text-gray-400 hover:text-white text-xl leading-none p-1">&times;</button>
+      </div>
+      <div id="savedCartsList" class="divide-y divide-gray-700/60">
+        <div class="text-center py-8 text-gray-500 text-sm">Loading...</div>
+      </div>
+    </div>
+  </div>
+
   <!-- mobile cart toggle button -->
   <button id="cartToggleBtn" class="fixed top-4 right-4 md:hidden z-30 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-lg w-12 h-12 shadow-lg flex items-center justify-center transition-all">
     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -247,6 +275,13 @@
     let cachedSheetData = null;     // synced xlsx data (Uint8Array)
     let useGoogleSource = false;    // toggle: true = Google Sheets, false = local file
     let offlineMode = true;
+    let customer = "";
+    const PAGE_SIZE = 100;
+    let renderedProductCount = 0;
+    let filteredProductBarcodes = [];
+    let allProductBarcodes = [];
+    let scrollObserver = null;
+    let isLoadingMore = false;
 
     const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNgrO1HT1fanpNDiFtL9RQazcVeDJ4M1RuxJx-I9tBk_ycFqYUoDj8I6ZCnQKBIwxBRHjnhP_0_Kge/pub?output=xlsx";
 
@@ -465,6 +500,7 @@
             const prod = products[barcode];
             if (prod) {
               addToCartWithSnapshot(prod, qty);
+              document.getElementById("productSearchInput")?.select();
               showTemporaryToast(`➕ Added ${qty}x ${prod.name} to cart`);
             }
           });
@@ -676,20 +712,169 @@
       updateAllAddButtons();
     }
 
-    function saveCart() {
-      localStorage.setItem('toko-cart', JSON.stringify(cart));
+    // ---------- INDEXED DB CART ----------
+    function openCartDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open("toko-yakin", 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains("carts"))
+            db.createObjectStore("carts", { keyPath: "id" });
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
     }
 
-    function loadCart() {
-      const saved = localStorage.getItem('toko-cart');
-      if (saved) {
-        try { cart = JSON.parse(saved); } catch (e) { cart = []; }
+    function dbPut(data) {
+      return openCartDB().then(db => {
+        const tx = db.transaction("carts", "readwrite");
+        tx.objectStore("carts").put(data);
+        return new Promise((resolve, reject) => {
+          tx.oncomplete = () => { db.close(); resolve(); };
+          tx.onerror = () => { db.close(); reject(tx.error); };
+        });
+      }).catch(() => {});
+    }
+
+    function dbGet(id) {
+      return openCartDB().then(db => {
+        const tx = db.transaction("carts", "readonly");
+        const req = tx.objectStore("carts").get(id);
+        return new Promise((resolve, reject) => {
+          req.onsuccess = () => { db.close(); resolve(req.result); };
+          req.onerror = () => { db.close(); reject(req.error); };
+        });
+      }).catch(() => null);
+    }
+
+    function dbGetAll() {
+      return openCartDB().then(db => {
+        const tx = db.transaction("carts", "readonly");
+        const req = tx.objectStore("carts").getAll();
+        return new Promise((resolve, reject) => {
+          req.onsuccess = () => { db.close(); resolve(req.result || []); };
+          req.onerror = () => { db.close(); reject(req.error); };
+        });
+      }).catch(() => []);
+    }
+
+    function dbDelete(id) {
+      return openCartDB().then(db => {
+        const tx = db.transaction("carts", "readwrite");
+        tx.objectStore("carts").delete(id);
+        return new Promise((resolve, reject) => {
+          tx.oncomplete = () => { db.close(); resolve(); };
+          tx.onerror = () => { db.close(); reject(tx.error); };
+        });
+      }).catch(() => {});
+    }
+
+    function saveNamedCart() {
+      const inp = document.getElementById("customer");
+      const name = inp ? inp.value.trim() : customer.trim();
+      if (!name) { showTemporaryToast("⚠️ Type a customer name first"); return; }
+      if (cart.length === 0) { showTemporaryToast("⚠️ Cart is empty"); return; }
+      const now = new Date();
+      const dateStr = now.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
+      const timeStr = now.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+      const id = "cart_" + now.getTime();
+      dbPut({ id, customer: name, date: dateStr + " " + timeStr, items: [...cart], updatedAt: Date.now() });
+      showTemporaryToast(`💾 Saved cart for ${name}`);
+    }
+
+    async function loadSavedCart(id) {
+      const data = await dbGet(id);
+      if (!data || !data.items) { showTemporaryToast("⚠️ Cart not found"); return; }
+      cart = data.items;
+      customer = data.customer || "";
+      const inp = document.getElementById("customer");
+      if (inp) inp.value = customer;
+      renderCart();
+      closeSavedCartsModal();
+      showTemporaryToast(`📋 Loaded cart for ${customer || "unknown"}`);
+    }
+
+    async function deleteSavedCart(id) {
+      if (!confirm("Delete this saved cart?")) return;
+      await dbDelete(id);
+      renderSavedCartsList();
+    }
+
+    function openSavedCartsModal() {
+      const modal = document.getElementById("savedCartsModal");
+      if (!modal) return;
+      modal.classList.remove("hidden");
+      renderSavedCartsList();
+    }
+
+    function closeSavedCartsModal() {
+      const modal = document.getElementById("savedCartsModal");
+      if (!modal) return;
+      modal.classList.add("hidden");
+    }
+
+    async function renderSavedCartsList() {
+      const container = document.getElementById("savedCartsList");
+      if (!container) return;
+      const all = await dbGetAll();
+      const saved = all.filter(e => e.id && e.id.startsWith("cart_"));
+      if (saved.length === 0) {
+        container.innerHTML = '<div class="text-center py-8 text-gray-500 text-sm">No saved carts yet</div>';
+        return;
+      }
+      saved.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      container.innerHTML = saved.map(e => `
+        <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-700/40 transition">
+          <div class="min-w-0 flex-1">
+            <div class="font-semibold text-gray-200 truncate">${escapeHtml(e.customer || "Unknown")}</div>
+            <div class="text-xs text-gray-400">${escapeHtml(e.date || "")} · ${(e.items || []).length} item(s)</div>
+          </div>
+          <div class="flex items-center gap-1 ml-3">
+            <button class="load-saved-btn text-xs font-medium text-blue-300 hover:text-white bg-blue-700/50 hover:bg-blue-600 px-2.5 py-1.5 rounded-md transition" data-id="${escapeHtml(e.id)}">Load</button>
+            <button class="delete-saved-btn text-xs font-medium text-red-400 hover:text-white bg-red-700/50 hover:bg-red-600 px-2 py-1.5 rounded-md transition" data-id="${escapeHtml(e.id)}">&times;</button>
+          </div>
+        </div>
+      `).join("");
+      container.querySelectorAll(".load-saved-btn").forEach(btn => {
+        btn.addEventListener("click", () => loadSavedCart(btn.dataset.id));
+      });
+      container.querySelectorAll(".delete-saved-btn").forEach(btn => {
+        btn.addEventListener("click", () => deleteSavedCart(btn.dataset.id));
+      });
+    }
+
+    function saveCart() {
+      const inp = document.getElementById("customer");
+      customer = inp ? inp.value : customer;
+      dbPut({ id: "current-cart", customer: customer, items: cart, updatedAt: Date.now() });
+    }
+
+    async function loadCart() {
+      let data = await dbGet("current-cart");
+      if (!data) {
+        const saved = localStorage.getItem("toko-cart");
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            data = Array.isArray(parsed) ? { customer: "", items: parsed } : parsed;
+          } catch (e) { data = null; }
+        }
+      }
+      if (data) {
+        cart = data.items || [];
+        customer = data.customer || "";
+        const inp = document.getElementById("customer");
+        if (inp) inp.value = customer;
       }
       renderCart();
     }
 
     function clearCart() {
       cart = [];
+      customer = "";
+      const inp = document.getElementById("customer");
+      if (inp) inp.value = "";
       const uangInput = document.getElementById("uangPembeli");
       if (uangInput) uangInput.value = "0";
       renderCart();
@@ -928,38 +1113,34 @@
       currentSearchTerm = term;
       const tbody = document.getElementById("productTable");
       if (!tbody) return;
-      const rows = Array.from(tbody.querySelectorAll("tr.product-row"));
-      let visibleCount = 0;
+
+      applyFilterToBarcodeList();
+
+      if (scrollObserver) { scrollObserver.disconnect(); scrollObserver = null; }
       const existingNoResult = tbody.querySelector(".no-results-row");
       if (existingNoResult) existingNoResult.remove();
+      const oldSentinel = document.getElementById('scroll-sentinel');
+      if (oldSentinel) oldSentinel.remove();
 
-      if (term === "") {
-        rows.forEach(row => { row.style.display = ""; visibleCount++; });
-        updateSearchCountUI(visibleCount, rows.length);
-        applyColumnVisibility();
-        return;
-      }
-      const lowerTerm = term.toLowerCase();
-      rows.forEach(row => {
-        const cells = row.querySelectorAll("td");
-        if (cells.length >= 2) {
-          const barcode = cells[0]?.innerText?.toLowerCase() || "";
-          const pname = cells[1]?.innerText?.toLowerCase() || "";
-          const matches = barcode.includes(lowerTerm) || pname.includes(lowerTerm);
-          row.style.display = matches ? "" : "none";
-          if (matches) visibleCount++;
-        } else row.style.display = "none";
-      });
+      tbody.innerHTML = "";
+      renderedProductCount = 0;
 
-      if (visibleCount === 0 && rows.length > 0) {
+      if (filteredProductBarcodes.length === 0) {
         const visibleColspan = getVisibleColumnCount();
         const noResultRow = document.createElement("tr");
         noResultRow.className = "no-results-row bg-gray-800/40";
         noResultRow.innerHTML = `<td colspan="${visibleColspan}" class="text-center py-10 text-gray-400 italic">🔍 No products match "${escapeHtml(term)}"</td>`;
         tbody.appendChild(noResultRow);
+        updateSearchCountUI(0, allProductBarcodes.length);
+        applyColumnVisibility();
+        return;
       }
-      updateSearchCountUI(visibleCount, rows.length);
+
+      renderNextBatch();
+      setupScrollObserver();
+      updateSearchCountUI(filteredProductBarcodes.length, allProductBarcodes.length);
       applyColumnVisibility();
+      updateAllAddButtons();
     }
 
     function updateSearchCountUI(visible, total) {
@@ -1171,22 +1352,107 @@
       }
     }
 
-    function renderSheetView(sheetName) {
-      const tbody = document.getElementById("productTable");
-      if (!tbody) return;
-      tbody.innerHTML = "";
-      currentActiveSheet = sheetName;
-      products = { ...allProducts[sheetName] } || {};
+    // ---------- PAGINATION HELPERS ----------
+    function buildProductBarcodeList() {
+      allProductBarcodes = Object.keys(products);
+    }
 
-      for (const barcode in products) {
+    function applyFilterToBarcodeList() {
+      const searchInput = document.getElementById("productSearchInput");
+      const term = searchInput ? searchInput.value.trim().toLowerCase() : "";
+      if (!term) {
+        filteredProductBarcodes = [...allProductBarcodes];
+      } else {
+        filteredProductBarcodes = allProductBarcodes.filter(barcode => {
+          const p = products[barcode];
+          if (!p) return false;
+          return p.barcode.toLowerCase().includes(term) || p.name.toLowerCase().includes(term);
+        });
+      }
+      currentSearchTerm = searchInput ? searchInput.value.trim() : "";
+    }
+
+    function renderNextBatch() {
+      const tbody = document.getElementById("productTable");
+      if (!tbody || renderedProductCount >= filteredProductBarcodes.length) return;
+      isLoadingMore = true;
+      const end = Math.min(renderedProductCount + PAGE_SIZE, filteredProductBarcodes.length);
+      const isCombined = viewMode === "combined";
+      for (let i = renderedProductCount; i < end; i++) {
+        const barcode = filteredProductBarcodes[i];
         const p = products[barcode];
+        if (!p) continue;
         const tiers = p.tiers || [];
-        addProductRowToDOM(p.barcode, p.name, p.category, p.singlePrice, false,
+        const hasGrosir = isCombined && allProducts["Grosir"] && !!allProducts["Grosir"][barcode];
+        addProductRowToDOM(p.barcode, p.name, p.category, p.singlePrice, hasGrosir,
           tiers[0]?.min || 0, tiers[0]?.totalPrice || 0,
           tiers[1]?.min || 0, tiers[1]?.totalPrice || 0,
           tiers[2]?.min || 0, tiers[2]?.totalPrice || 0, p.type || "");
       }
+      renderedProductCount = end;
+      isLoadingMore = false;
+    }
 
+    function loadNextPage() {
+      if (isLoadingMore || renderedProductCount >= filteredProductBarcodes.length) return;
+      renderNextBatch();
+      applyColumnVisibility();
+      updateAllAddButtons();
+      let sentinel = document.getElementById('scroll-sentinel');
+      if (renderedProductCount >= filteredProductBarcodes.length) {
+        if (sentinel) {
+          const visibleCols = getVisibleColumnCount();
+          sentinel.innerHTML = `<td colspan="${visibleCols}" class="text-center py-4 text-gray-500 text-xs">— end —</td>`;
+        }
+      } else if (!sentinel) {
+        setupScrollObserver();
+      }
+    }
+
+    function setupScrollObserver() {
+      const tbody = document.getElementById("productTable");
+      if (!tbody) return;
+      if (scrollObserver) { scrollObserver.disconnect(); scrollObserver = null; }
+      const oldSentinel = document.getElementById('scroll-sentinel');
+      if (oldSentinel) oldSentinel.remove();
+      if (renderedProductCount >= filteredProductBarcodes.length) return;
+      const sentinel = document.createElement('tr');
+      sentinel.id = 'scroll-sentinel';
+      const visibleCols = getVisibleColumnCount();
+      sentinel.innerHTML = `<td colspan="${visibleCols}" class="text-center py-4 text-gray-500 text-xs"><span class="loading-shimmer inline-block px-8 py-2 rounded">Loading more...</span></td>`;
+      tbody.appendChild(sentinel);
+      scrollObserver = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && !isLoadingMore) loadNextPage();
+      }, { rootMargin: '200px' });
+      scrollObserver.observe(sentinel);
+    }
+
+    function resetProductView() {
+      const tbody = document.getElementById("productTable");
+      if (!tbody) return;
+      if (scrollObserver) { scrollObserver.disconnect(); scrollObserver = null; }
+      const oldSentinel = document.getElementById('scroll-sentinel');
+      if (oldSentinel) oldSentinel.remove();
+      tbody.innerHTML = "";
+      renderedProductCount = 0;
+      applyFilterToBarcodeList();
+      renderNextBatch();
+      setupScrollObserver();
+      updateSearchCountUI(filteredProductBarcodes.length, allProductBarcodes.length);
+      applyColumnVisibility();
+      updateAllAddButtons();
+    }
+
+    function renderSheetView(sheetName) {
+      const tbody = document.getElementById("productTable");
+      if (!tbody) return;
+      currentActiveSheet = sheetName;
+      viewMode = sheetName.toLowerCase();
+      products = { ...allProducts[sheetName] } || {};
+      buildProductBarcodeList();
+      const searchInput = document.getElementById("productSearchInput");
+      if (searchInput) searchInput.value = "";
+      resetProductView();
       document.querySelectorAll(".view-toggle-btn").forEach(btn => {
         const view = btn.getAttribute("data-view");
         if (view === sheetName.toLowerCase()) {
@@ -1197,18 +1463,11 @@
           btn.classList.add("bg-gray-700", "text-gray-200", "hover:bg-gray-600");
         }
       });
-
-      const searchInput = document.getElementById("productSearchInput");
-      if (searchInput) searchInput.value = "";
-      applyProductFilter();
-      applyColumnVisibility();
-      updateAllAddButtons();
     }
 
     function renderCombinedView() {
       const tbody = document.getElementById("productTable");
       if (!tbody) return;
-      tbody.innerHTML = "";
       viewMode = "combined";
       currentActiveSheet = "Biasa";
 
@@ -1223,17 +1482,16 @@
         const name = (biasa && biasa.name) || (grosir && grosir.name) || "Unknown";
         const category = (biasa && biasa.category) || (grosir && grosir.category) || "";
         const price = biasa ? biasa.singlePrice : (grosir ? grosir.singlePrice : 0);
-        const hasGrosir = !!grosir;
         const primary = biasa || grosir;
         const tiers = primary.tiers || [];
 
         products[barcode] = { barcode, name, category, singlePrice: price, tiers, type: primary.type || "" };
-
-        addProductRowToDOM(barcode, name, category, price, hasGrosir,
-          tiers[0]?.min || 0, tiers[0]?.totalPrice || 0,
-          tiers[1]?.min || 0, tiers[1]?.totalPrice || 0,
-          tiers[2]?.min || 0, tiers[2]?.totalPrice || 0, primary.type || "");
       }
+
+      buildProductBarcodeList();
+      const searchInput = document.getElementById("productSearchInput");
+      if (searchInput) searchInput.value = "";
+      resetProductView();
 
       document.querySelectorAll(".view-toggle-btn").forEach(btn => {
         const view = btn.getAttribute("data-view");
@@ -1245,12 +1503,6 @@
           btn.classList.add("bg-gray-700", "text-gray-200", "hover:bg-gray-600");
         }
       });
-
-      const searchInput = document.getElementById("productSearchInput");
-      if (searchInput) searchInput.value = "";
-      applyProductFilter();
-      applyColumnVisibility();
-      updateAllAddButtons();
     }
 
     function switchView(view) {
@@ -1333,7 +1585,7 @@
     async function initialize() {
       initSearchEvents();
       setupBulkToggle();
-      loadCart();
+      await loadCart();
 
       // Register service worker for offline support
       if ('serviceWorker' in navigator) {
@@ -1375,6 +1627,11 @@
         uangInput.addEventListener("focus", () => uangInput.select());
       }
 
+      const cartNameInput = document.getElementById("customer");
+      if (cartNameInput) {
+        cartNameInput.addEventListener("input", saveCart);
+      }
+
       document.querySelectorAll(".view-toggle-btn").forEach(btn => {
         btn.addEventListener("click", () => {
           if (isLoading) return;
@@ -1389,6 +1646,12 @@
       document.getElementById("cartBackdrop")?.addEventListener("click", () => setCartOpen(false));
       document.getElementById("exportCartBtn")?.addEventListener("click", exportCart);
       document.getElementById("importCartBtn")?.addEventListener("click", importCart);
+      document.getElementById("saveCartBtn")?.addEventListener("click", saveNamedCart);
+      document.getElementById("savedCartsBtn")?.addEventListener("click", openSavedCartsModal);
+      document.getElementById("closeSavedCartsModal")?.addEventListener("click", closeSavedCartsModal);
+      document.getElementById("savedCartsModal")?.addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) closeSavedCartsModal();
+      });
       document.addEventListener("keydown", (e) => { if (e.key === "Escape" && cartOpen) setCartOpen(false); });
     }
 
