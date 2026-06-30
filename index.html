@@ -475,6 +475,7 @@
                 cart[idx].qty--;
               }
               renderCart();
+              document.getElementById("productSearchInput")?.select();
             }
           });
           incBtn.addEventListener('click', (e) => {
@@ -483,6 +484,7 @@
             if (idx !== -1) {
               cart[idx].qty++;
               renderCart();
+              document.getElementById("productSearchInput")?.select();
             }
           });
         } else {
@@ -653,6 +655,7 @@
         incBtn.addEventListener("click", () => {
           cart[idx].qty++;
           renderCart();
+          document.getElementById("productSearchInput")?.select();
         });
         decBtn.addEventListener("click", () => {
           if (cart[idx].qty <= 1) {
@@ -661,6 +664,7 @@
             cart[idx].qty--;
           }
           renderCart();
+          document.getElementById("productSearchInput")?.select();
         });
 
         const detailsBtn = tr.querySelector(".details-btn");
@@ -1636,10 +1640,17 @@
         btn.addEventListener("click", () => {
           if (isLoading) return;
           switchView(btn.getAttribute("data-view"));
+          document.getElementById("productSearchInput")?.select();
         });
       });
-      document.getElementById("syncBtn")?.addEventListener("click", syncSheet);
-      document.getElementById("sourceToggle")?.addEventListener("click", toggleOnlineMode);
+      document.getElementById("syncBtn")?.addEventListener("click", () => {
+        syncSheet();
+        document.getElementById("productSearchInput")?.select();
+      });
+      document.getElementById("sourceToggle")?.addEventListener("click", () => {
+        toggleOnlineMode();
+        document.getElementById("productSearchInput")?.select();
+      });
 
       document.getElementById("cartToggleBtn")?.addEventListener("click", toggleCart);
       document.getElementById("closeCartBtn")?.addEventListener("click", () => setCartOpen(false));
@@ -1652,7 +1663,24 @@
       document.getElementById("savedCartsModal")?.addEventListener("click", (e) => {
         if (e.target === e.currentTarget) closeSavedCartsModal();
       });
-      document.addEventListener("keydown", (e) => { if (e.key === "Escape" && cartOpen) setCartOpen(false); });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && cartOpen) setCartOpen(false);
+        if (e.altKey) {
+          const viewMap = { "1": "combined", "2": "biasa", "3": "grosir" };
+          const view = viewMap[e.key];
+          if (view) {
+            e.preventDefault();
+            const btn = document.querySelector(`.view-toggle-btn[data-view="${view}"]`);
+            if (btn) btn.click();
+          } else if (e.key === "4") {
+            e.preventDefault();
+            document.getElementById("sourceToggle")?.click();
+          } else if (e.key === "5") {
+            e.preventDefault();
+            document.getElementById("syncBtn")?.click();
+          }
+        }
+      });
     }
 
     initialize();
