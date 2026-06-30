@@ -472,11 +472,13 @@
         const tiers = prod.tiers || [];
         const mins = new Set([3, 5, 10]);
         tiers.forEach(t => { if (t.min > 0) mins.add(t.min); });
+        [min1, min2, min3].forEach(m => { if (m > 0) mins.add(m); });
         const sorted = [...mins].sort((a, b) => a - b);
         let html = '';
+        const tierMins = [min1, min2, min3].filter(m => m > 0);
         sorted.forEach(min => {
-          const isTier = tiers.some(t => t.min === min);
-          html += `<button class="qty-suggest-btn px-3 py-1.5 text-sm font-semibold rounded-md transition ${isTier ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}" data-value="${min}">${min}</button>`;
+          const isTierMin = tierMins.includes(min);
+          html += `<button class="qty-suggest-btn px-3 py-1.5 text-sm font-semibold rounded-md transition ${isTierMin ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}" data-value="${min}">${min}</button>`;
         });
         const popup = document.getElementById('qtySuggestPopup');
         const popupBody = popup.querySelector('div');
@@ -488,10 +490,14 @@
         popup._activeInput = qtyInput;
         popupBody.querySelectorAll('.qty-suggest-btn').forEach(btn => {
           btn.addEventListener('click', () => {
-            qtyInput.value = btn.dataset.value;
+            const qty = parseInt(btn.dataset.value);
+            const prod = products[barcode];
+            if (prod) {
+              addToCartWithSnapshot(prod, qty);
+              showTemporaryToast(`➕ Added ${qty}x ${prod.name} to cart`);
+            }
             popup.classList.add('hidden');
-            qtyInput.focus();
-            qtyInput.select();
+            document.getElementById("productSearchInput")?.select();
           });
         });
       });
