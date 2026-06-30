@@ -73,6 +73,19 @@
       opacity: 0.4;
     }
 
+    #qtySuggestPopup {
+      transition: opacity 0.1s ease;
+      pointer-events: auto;
+    }
+    .qty-suggest-btn {
+      min-width: 36px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .qty-suggest-btn:active {
+      transform: scale(0.95);
+    }
+
   </style>
 </head>
 <body class="bg-gray-900 text-gray-100 antialiased min-h-screen">
@@ -251,6 +264,11 @@
         <div class="text-center py-8 text-gray-500 text-sm">Loading...</div>
       </div>
     </div>
+  </div>
+
+  <!-- suggested quantity popup -->
+  <div id="qtySuggestPopup" class="fixed z-50 hidden">
+    <div class="bg-gray-800 border border-gray-600/80 rounded-lg shadow-xl p-1.5 flex gap-1"></div>
   </div>
 
   <!-- mobile cart toggle button -->
@@ -447,6 +465,43 @@
             }
           }
         }
+      });
+      qtyInput.addEventListener('focus', () => {
+        const prod = products[barcode];
+        if (!prod) return;
+        const tiers = prod.tiers || [];
+        const mins = new Set([3, 5, 10]);
+        tiers.forEach(t => { if (t.min > 0) mins.add(t.min); });
+        const sorted = [...mins].sort((a, b) => a - b);
+        let html = '';
+        sorted.forEach(min => {
+          const isTier = tiers.some(t => t.min === min);
+          html += `<button class="qty-suggest-btn px-3 py-1.5 text-sm font-semibold rounded-md transition ${isTier ? 'bg-amber-600 hover:bg-amber-500 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}" data-value="${min}">${min}</button>`;
+        });
+        const popup = document.getElementById('qtySuggestPopup');
+        const popupBody = popup.querySelector('div');
+        popupBody.innerHTML = html;
+        const rect = qtyInput.getBoundingClientRect();
+        popup.style.left = Math.max(4, rect.left) + 'px';
+        popup.style.top = (rect.bottom + 4) + 'px';
+        popup.classList.remove('hidden');
+        popup._activeInput = qtyInput;
+        popupBody.querySelectorAll('.qty-suggest-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            qtyInput.value = btn.dataset.value;
+            popup.classList.add('hidden');
+            qtyInput.focus();
+            qtyInput.select();
+          });
+        });
+      });
+      qtyInput.addEventListener('blur', () => {
+        setTimeout(() => {
+          const popup = document.getElementById('qtySuggestPopup');
+          if (popup._activeInput === qtyInput && !popup.contains(document.activeElement)) {
+            popup.classList.add('hidden');
+          }
+        }, 150);
       });
       tbody.appendChild(tr);
     }
@@ -1683,8 +1738,22 @@
       document.getElementById("savedCartsModal")?.addEventListener("click", (e) => {
         if (e.target === e.currentTarget) closeSavedCartsModal();
       });
+      document.addEventListener("click", (e) => {
+        const popup = document.getElementById('qtySuggestPopup');
+        if (popup && !popup.classList.contains('hidden')) {
+          const qtyInput = popup._activeInput;
+          if (qtyInput && !qtyInput.contains(e.target) && !popup.contains(e.target)) {
+            popup.classList.add('hidden');
+          }
+        }
+      });
       document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape" && cartOpen) setCartOpen(false);
+        if (e.key === "Escape") {
+          if (cartOpen) setCartOpen(false);
+          const popup = document.getElementById('qtySuggestPopup');
+          if (popup && !popup.classList.contains('hidden')) popup.classList.add('hidden');
+          return;
+        }
         if (e.altKey) {
           const viewMap = { "1": "combined", "2": "biasa", "3": "grosir" };
           const view = viewMap[e.key];
