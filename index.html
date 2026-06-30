@@ -428,6 +428,26 @@
           <div class="add-btn-container" data-barcode="${barcode}"></div>
         </td>
       `;
+      const qtyInput = tr.querySelector('.qty-input');
+      qtyInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const container = tr.querySelector('.add-btn-container');
+          const addBtn = container?.querySelector('.add-btn');
+          if (addBtn) {
+            addBtn.click();
+          } else {
+            let qty = parseInt(qtyInput.value);
+            if (isNaN(qty) || qty < 1) qty = 1;
+            const prod = products[barcode];
+            if (prod) {
+              addToCartWithSnapshot(prod, qty);
+              document.getElementById("productSearchInput")?.select();
+              showTemporaryToast(`➕ Added ${qty}x ${prod.name} to cart`);
+            }
+          }
+        }
+      });
       tbody.appendChild(tr);
     }
 
