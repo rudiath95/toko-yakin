@@ -9,5 +9,9 @@ curl -fSL -o TokoYakin.xlsx "$URL"
 echo "Downloaded TokoYakin.xlsx"
 
 git add TokoYakin.xlsx
-git commit -m "update spreadsheet data"
-git push
+if ! git diff --cached --quiet; then
+  git commit -m "update spreadsheet data"
+  git push
+else
+  echo "No changes to TokoYakin.xlsx, skipping commit & push"
+fi

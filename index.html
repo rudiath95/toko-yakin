@@ -69,6 +69,34 @@
     .drag-over {
       border-top: 2px solid #60a5fa !important;
     }
+    .product-thumb { transition: all 0.15s ease; }
+    .product-thumb:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+    .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .ring-red-500\/30 { --tw-ring-color: rgba(239, 68, 68, 0.5); }
+    .ring-green-500\/30 { --tw-ring-color: rgba(34, 197, 94, 0.5); }
+    .no-image-placeholder {
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      position: relative;
+    }
+    .no-image-placeholder::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='64' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 002 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z'/%3E%3Cpolyline points='3.27 6.96 12 12.01 20.73 6.96'/%3E%3Cline x1='12' y1='22.08' x2='12' y2='12'/%3E%3C/svg%3E") no-repeat center 35%;
+      background-size: 48px;
+      opacity: 0.6;
+    }
+    .no-image-placeholder::after {
+      content: 'No Image';
+      position: absolute;
+      bottom: 20%;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.7rem;
+      color: #6b7280;
+      letter-spacing: 0.5px;
+      font-weight: 500;
+    }
     .dragging {
       opacity: 0.4;
     }
@@ -140,6 +168,10 @@
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
               <span id="bulkToggleLabel">Show Bulk Columns</span>
             </button>
+            <button id="toggleViewBtn" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-700 hover:bg-gray-600 transition flex items-center gap-1 shadow-sm" title="Switch to thumbnail view">
+              <svg id="viewToggleIcon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h4v4H3zm7 0h4v4h-4zm7 0h4v4h-4zM3 10h4v4H3zm7 0h4v4h-4zm7 0h4v4h-4zM3 17h4v4H3zm7 0h4v4h-4zm7 0h4v4h-4z" /></svg>
+              <span id="viewToggleLabel">Grid</span>
+            </button>
           </div>
         </div>
 
@@ -158,6 +190,7 @@
           </table>
           <div id="productLoadingMsg" class="hidden text-center py-8 text-gray-400 italic">Loading products...</div>
         </div>
+        <div id="productGrid" class="hidden grid grid-cols-1 md:grid-cols-3 gap-4 p-4"></div>
       </div>
     </div>
   </div>
@@ -289,8 +322,10 @@
     let viewMode = "combined";  // "combined" | "biasa" | "grosir"
     let isLoading = false;
     let showBulkColumns = false;    // DEFAULT = HIDDEN (bulk columns invisible)
+    let layoutMode = "list";        // "list" | "thumbnail"
     let cartOpen = false;
     let cachedSheetData = null;     // synced xlsx data (Uint8Array)
+    let imageObjectUrls = {};       // in-memory cache: imageUrl -> blob URL
     let useGoogleSource = false;    // toggle: true = Google Sheets, false = local file
     let offlineMode = true;
     let customer = "";
@@ -327,6 +362,7 @@
 
     // ---------- APPLY COLUMN VISIBILITY (hide/show bulk columns: indices 4,5,6,7,8,9) ----------
     function applyColumnVisibility() {
+      if (layoutMode === "thumbnail") return;
       const table = document.querySelector(".product-table");
       if (!table) return;
 
@@ -512,6 +548,133 @@
       tbody.appendChild(tr);
     }
 
+    // ---------- THUMBNAIL RENDERING ----------
+    function addProductThumbnailToDOM(barcode, name, price, imageUrl, hasGrosir, type) {
+      const grid = document.getElementById("productGrid");
+      if (!grid) return;
+      const card = document.createElement("div");
+      card.className = `product-thumb bg-gray-800/60 border-2 border-gray-700/60 rounded-xl overflow-hidden hover:border-blue-500/50 transition-all ${hasGrosir ? 'ring-1 ring-green-500/30' : ''} ${type === 'KRT' ? 'ring-1 ring-red-500/30' : ''}`;
+      card.setAttribute('data-barcode', barcode);
+
+      const imgDiv = document.createElement("div");
+      imgDiv.className = "w-full aspect-square bg-gray-900 overflow-hidden flex items-center justify-center";
+      if (imageUrl) {
+        const img = document.createElement("img");
+        img.className = "w-full h-full object-cover";
+        img.src = imageUrl;
+        img.alt = name;
+        img.loading = "lazy";
+        img.onerror = async function() {
+          const cached = await getCachedImageUrl(imageUrl);
+          if (cached) {
+            this.src = cached;
+            this.onerror = function() { this.style.display = 'none'; this.parentElement.classList.add('no-image-placeholder'); };
+          } else {
+            this.style.display = 'none';
+            this.parentElement.classList.add('no-image-placeholder');
+          }
+        };
+        imgDiv.appendChild(img);
+      }
+      if (!imageUrl) imgDiv.classList.add('no-image-placeholder');
+      card.appendChild(imgDiv);
+
+      const info = document.createElement("div");
+      info.className = "p-3 space-y-1.5";
+      info.innerHTML = `
+        <div class="font-medium text-sm leading-tight line-clamp-2">${escapeHtml(name)}</div>
+        <div class="font-mono text-emerald-300 text-sm font-semibold">${price > 0 ? `Rp. ${price.toFixed(2)}` : '-'}</div>
+        <div class="flex items-center gap-1.5 mt-1">
+          <input type="number" min="1" value="1" class="qty-input w-[30%] min-w-0 px-2 py-1 bg-gray-800 border border-gray-600 rounded-md text-white text-xs focus:ring-1 focus:ring-blue-500 outline-none" onfocus="this.select()" />
+          <div class="add-btn-container flex-1" data-barcode="${barcode}"></div>
+        </div>
+      `;
+      card.appendChild(info);
+
+      const qtyInput = card.querySelector('.qty-input');
+      if (qtyInput) {
+        qtyInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const container = card.querySelector('.add-btn-container');
+            const addBtn = container?.querySelector('.add-btn');
+            if (addBtn) {
+              addBtn.click();
+            } else {
+              let qty = parseInt(qtyInput.value);
+              if (isNaN(qty) || qty < 1) qty = 1;
+              const prod = products[barcode];
+              if (prod) {
+                addToCartWithSnapshot(prod, qty);
+                showTemporaryToast(`➕ Added ${qty}x ${prod.name} to cart`);
+              }
+            }
+          }
+        });
+        qtyInput.addEventListener('focus', () => {
+          const prod = products[barcode];
+          if (!prod) return;
+          const tiers = prod.tiers || [];
+          const mins = new Set([3, 5, 10]);
+          const tierMins = [];
+          tiers.forEach(t => {
+            if (t.min > 0) {
+              mins.add(t.min);
+              tierMins.push(t.min);
+            }
+          });
+          const sorted = [...mins].sort((a, b) => a - b);
+          let html = '';
+          sorted.forEach(min => {
+            const isTierMin = tierMins.includes(min);
+            html += `<button class="qty-suggest-btn px-3 py-1.5 text-sm font-semibold rounded-md transition ${isTierMin ? 'bg-green-700 hover:bg-green-600 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-200'}" data-value="${min}">${min}</button>`;
+          });
+          const popup = document.getElementById('qtySuggestPopup');
+          const popupBody = popup.querySelector('div');
+          popupBody.innerHTML = html;
+          const rect = qtyInput.getBoundingClientRect();
+          popup.style.left = Math.max(4, rect.left) + 'px';
+          popup.style.top = (rect.bottom + 4) + 'px';
+          popup.classList.remove('hidden');
+          popup._activeInput = qtyInput;
+          popupBody.querySelectorAll('.qty-suggest-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const qty = parseInt(btn.dataset.value);
+              const prod = products[barcode];
+              if (prod) {
+                addToCartWithSnapshot(prod, qty);
+                showTemporaryToast(`➕ Added ${qty}x ${prod.name} to cart`);
+              }
+              popup.classList.add('hidden');
+            });
+          });
+        });
+        qtyInput.addEventListener('blur', () => {
+          setTimeout(() => {
+            const popup = document.getElementById('qtySuggestPopup');
+            if (popup._activeInput === qtyInput && !popup.contains(document.activeElement)) {
+              popup.classList.add('hidden');
+            }
+          }, 150);
+        });
+      }
+
+      grid.appendChild(card);
+    }
+
+    function renderAllThumbnails() {
+      const grid = document.getElementById("productGrid");
+      if (!grid) return;
+      grid.innerHTML = "";
+      for (let i = 0; i < filteredProductBarcodes.length; i++) {
+        const barcode = filteredProductBarcodes[i];
+        const p = products[barcode];
+        if (!p) continue;
+        const hasGrosir = viewMode === "combined" && allProducts["Grosir"] && !!allProducts["Grosir"][barcode];
+        addProductThumbnailToDOM(p.barcode, p.name, p.singlePrice, p.imageUrl || "", hasGrosir, p.type || "");
+      }
+    }
+
     // ---------- ADD TO CART (maintain snapshot) ----------
     function addToCartWithSnapshot(productData, qty = 1) {
       const existingIndex = cart.findIndex(i => i.barcode === productData.barcode);
@@ -576,9 +739,11 @@
             </button>
           `;
           const addBtn = container.querySelector('.add-btn');
-          const qtyInput = container.closest('tr').querySelector('.qty-input');
+          const row = container.closest('tr');
+          const card = container.closest('.product-thumb');
+          const qtyInput = row ? row.querySelector('.qty-input') : (card ? card.querySelector('.qty-input') : null);
           addBtn.addEventListener('click', () => {
-            let qty = parseInt(qtyInput.value);
+            let qty = qtyInput ? parseInt(qtyInput.value) : 1;
             if (isNaN(qty) || qty < 1) qty = 1;
             const prod = products[barcode];
             if (prod) {
@@ -853,6 +1018,77 @@
           tx.onerror = () => { db.close(); reject(tx.error); };
         });
       }).catch(() => {});
+    }
+
+    // ---------- INDEXED DB IMAGE CACHE ----------
+    function openImageDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open("toko-yakin-img", 1);
+        req.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains("imgs"))
+            db.createObjectStore("imgs");
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function imgDBPut(key, blob) {
+      return openImageDB().then(db => {
+        const tx = db.transaction("imgs", "readwrite");
+        tx.objectStore("imgs").put(blob, key);
+        return new Promise((resolve, reject) => {
+          tx.oncomplete = () => { db.close(); resolve(); };
+          tx.onerror = () => { db.close(); reject(tx.error); };
+        });
+      }).catch(() => {});
+    }
+
+    function imgDBGet(key) {
+      return openImageDB().then(db => {
+        const tx = db.transaction("imgs", "readonly");
+        const req = tx.objectStore("imgs").get(key);
+        return new Promise((resolve, reject) => {
+          req.onsuccess = () => { db.close(); resolve(req.result); };
+          req.onerror = () => { db.close(); reject(req.error); };
+        });
+      }).catch(() => null);
+    }
+
+    async function getCachedImageUrl(url) {
+      if (!url) return null;
+      if (imageObjectUrls[url]) return imageObjectUrls[url];
+      const blob = await imgDBGet(url);
+      if (blob) {
+        const objUrl = URL.createObjectURL(blob);
+        imageObjectUrls[url] = objUrl;
+        return objUrl;
+      }
+      return null;
+    }
+
+    async function cacheImage(url) {
+      if (!url || imageObjectUrls[url]) return;
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) return;
+        const blob = await resp.blob();
+        await imgDBPut(url, blob);
+        const objUrl = URL.createObjectURL(blob);
+        imageObjectUrls[url] = objUrl;
+      } catch (e) {}
+    }
+
+    function precacheProductImages() {
+      const urls = new Set();
+      for (const sheetName in allProducts) {
+        for (const barcode in allProducts[sheetName]) {
+          const url = allProducts[sheetName][barcode].imageUrl;
+          if (url) urls.add(url);
+        }
+      }
+      urls.forEach(url => cacheImage(url));
     }
 
     function saveNamedCart() {
@@ -1208,24 +1444,36 @@
       if (oldSentinel) oldSentinel.remove();
 
       tbody.innerHTML = "";
+      const grid = document.getElementById("productGrid");
+      if (grid) grid.innerHTML = "";
       renderedProductCount = 0;
 
       if (filteredProductBarcodes.length === 0) {
-        const visibleColspan = getVisibleColumnCount();
-        const noResultRow = document.createElement("tr");
-        noResultRow.className = "no-results-row bg-gray-800/40";
-        noResultRow.innerHTML = `<td colspan="${visibleColspan}" class="text-center py-10 text-gray-400 italic">🔍 No products match "${escapeHtml(term)}"</td>`;
-        tbody.appendChild(noResultRow);
+        if (layoutMode === "thumbnail") {
+          if (grid) grid.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400 italic">🔍 No products match "${escapeHtml(term)}"</div>`;
+        } else {
+          const visibleColspan = getVisibleColumnCount();
+          const noResultRow = document.createElement("tr");
+          noResultRow.className = "no-results-row bg-gray-800/40";
+          noResultRow.innerHTML = `<td colspan="${visibleColspan}" class="text-center py-10 text-gray-400 italic">🔍 No products match "${escapeHtml(term)}"</td>`;
+          tbody.appendChild(noResultRow);
+        }
         updateSearchCountUI(0, allProductBarcodes.length);
-        applyColumnVisibility();
+        if (layoutMode !== "thumbnail") applyColumnVisibility();
+        toggleListThumbnailVisibility();
         return;
       }
 
-      renderNextBatch();
-      setupScrollObserver();
+      if (layoutMode === "thumbnail") {
+        renderAllThumbnails();
+      } else {
+        renderNextBatch();
+        setupScrollObserver();
+        applyColumnVisibility();
+      }
       updateSearchCountUI(filteredProductBarcodes.length, allProductBarcodes.length);
-      applyColumnVisibility();
       updateAllAddButtons();
+      toggleListThumbnailVisibility();
     }
 
     function updateSearchCountUI(visible, total) {
@@ -1365,6 +1613,7 @@
       await loadSheetData("Biasa");
       await loadSheetData("Grosir");
       switchView(viewMode);
+      precacheProductImages();
     }
 
     async function loadSheetData(sheetName) {
@@ -1425,7 +1674,7 @@
           if (min2 > 0 && total2 > 0) tiers.push({ min: min2, totalPrice: total2 });
           if (min3 > 0 && total3 > 0) tiers.push({ min: min3, totalPrice: total3 });
 
-          allProducts[sheetName][barcode] = { barcode, name, category, singlePrice, tiers, type: (row[10] || "").toString().trim() };
+          allProducts[sheetName][barcode] = { barcode, name, category, singlePrice, tiers, type: (row[10] || "").toString().trim(), imageUrl: (row[12] || "").toString().trim() };
           productCount++;
         }
         if (productCount === 0) throw new Error(`No valid products found in sheet "${sheetName}"`);
@@ -1512,20 +1761,44 @@
       scrollObserver.observe(sentinel);
     }
 
+    function toggleListThumbnailVisibility() {
+      const tbl = document.querySelector(".product-table");
+      const grd = document.getElementById("productGrid");
+      const bulkBtn = document.getElementById("toggleBulkColumnsBtn");
+      if (tbl && grd) {
+        if (layoutMode === "thumbnail") {
+          tbl.style.display = "none";
+          grd.classList.remove("hidden");
+          if (bulkBtn) bulkBtn.style.display = "none";
+        } else {
+          tbl.style.display = "";
+          grd.classList.add("hidden");
+          if (bulkBtn) bulkBtn.style.display = "";
+        }
+      }
+    }
+
     function resetProductView() {
       const tbody = document.getElementById("productTable");
+      const grid = document.getElementById("productGrid");
       if (!tbody) return;
       if (scrollObserver) { scrollObserver.disconnect(); scrollObserver = null; }
       const oldSentinel = document.getElementById('scroll-sentinel');
       if (oldSentinel) oldSentinel.remove();
       tbody.innerHTML = "";
+      if (grid) grid.innerHTML = "";
       renderedProductCount = 0;
       applyFilterToBarcodeList();
-      renderNextBatch();
-      setupScrollObserver();
+      if (layoutMode === "thumbnail") {
+        renderAllThumbnails();
+      } else {
+        renderNextBatch();
+        setupScrollObserver();
+      }
       updateSearchCountUI(filteredProductBarcodes.length, allProductBarcodes.length);
-      applyColumnVisibility();
+      if (layoutMode !== "thumbnail") applyColumnVisibility();
       updateAllAddButtons();
+      toggleListThumbnailVisibility();
     }
 
     function renderSheetView(sheetName) {
@@ -1570,7 +1843,7 @@
         const primary = biasa || grosir;
         const tiers = primary.tiers || [];
 
-        products[barcode] = { barcode, name, category, singlePrice: price, tiers, type: primary.type || "" };
+        products[barcode] = { barcode, name, category, singlePrice: price, tiers, type: primary.type || "", imageUrl: primary.imageUrl || "" };
       }
 
       buildProductBarcodeList();
@@ -1629,6 +1902,7 @@
         await loadSheetData("Biasa");
         await loadSheetData("Grosir");
         switchView(viewMode);
+        precacheProductImages();
         showTemporaryToast("✅ Synced & loaded — file saved to Downloads");
       } catch (err) {
         showTemporaryToast("❌ Sync failed: " + err.message);
@@ -1697,6 +1971,7 @@
       }
       renderCombinedView();
       updateOnlineToggleUI();
+      precacheProductImages();
 
       const checkoutBtn = document.getElementById("checkout");
       if (checkoutBtn) {
@@ -1731,6 +2006,31 @@
       document.getElementById("sourceToggle")?.addEventListener("click", () => {
         toggleOnlineMode();
         document.getElementById("productSearchInput")?.select();
+      });
+      document.getElementById("toggleViewBtn")?.addEventListener("click", () => {
+        layoutMode = layoutMode === "list" ? "thumbnail" : "list";
+        const btn = document.getElementById("toggleViewBtn");
+        const label = document.getElementById("viewToggleLabel");
+        const icon = document.getElementById("viewToggleIcon");
+        if (btn) {
+          if (layoutMode === "thumbnail") {
+            btn.classList.add("bg-blue-600", "text-white", "shadow-sm");
+            btn.classList.remove("bg-gray-700", "text-gray-200", "hover:bg-gray-600");
+            btn.title = "Switch to list view";
+          } else {
+            btn.classList.remove("bg-blue-600", "text-white", "shadow-sm");
+            btn.classList.add("bg-gray-700", "text-gray-200", "hover:bg-gray-600");
+            btn.title = "Switch to thumbnail view";
+          }
+        }
+        if (label) label.textContent = layoutMode === "thumbnail" ? "List" : "Grid";
+        if (icon) {
+          icon.setAttribute('viewBox', layoutMode === 'thumbnail' ? '0 0 500 470' : '0 0 24 24');
+          icon.innerHTML = layoutMode === "thumbnail"
+            ? '<path fill="currentColor" d="M487.2,69.7c0,12.9-10.5,23.4-23.4,23.4h-322c-12.9,0-23.4-10.5-23.4-23.4s10.5-23.4,23.4-23.4h322.1 C476.8,46.4,487.2,56.8,487.2,69.7z M463.9,162.3H141.8c-12.9,0-23.4,10.5-23.4,23.4s10.5,23.4,23.4,23.4h322.1 c12.9,0,23.4-10.5,23.4-23.4C487.2,172.8,476.8,162.3,463.9,162.3z M463.9,278.3H141.8c-12.9,0-23.4,10.5-23.4,23.4 s10.5,23.4,23.4,23.4h322.1c12.9,0,23.4-10.5,23.4-23.4C487.2,288.8,476.8,278.3,463.9,278.3z M463.9,394.3H141.8 c-12.9,0-23.4,10.5-23.4,23.4s10.5,23.4,23.4,23.4h322.1c12.9,0,23.4-10.5,23.4-23.4C487.2,404.8,476.8,394.3,463.9,394.3z M38.9,30.8C17.4,30.8,0,48.2,0,69.7s17.4,39,38.9,39s38.9-17.5,38.9-39S60.4,30.8,38.9,30.8z M38.9,146.8 C17.4,146.8,0,164.2,0,185.7s17.4,38.9,38.9,38.9s38.9-17.4,38.9-38.9S60.4,146.8,38.9,146.8z M38.9,262.8 C17.4,262.8,0,280.2,0,301.7s17.4,38.9,38.9,38.9s38.9-17.4,38.9-38.9S60.4,262.8,38.9,262.8z M38.9,378.7 C17.4,378.7,0,396.1,0,417.6s17.4,38.9,38.9,38.9s38.9-17.4,38.9-38.9C77.8,396.2,60.4,378.7,38.9,378.7z" />'
+            : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h4v4H3zm7 0h4v4h-4zm7 0h4v4h-4zM3 10h4v4H3zm7 0h4v4h-4zm7 0h4v4h-4zM3 17h4v4H3zm7 0h4v4h-4zm7 0h4v4h-4z" />';
+        }
+        applyProductFilter();
       });
 
       document.getElementById("cartToggleBtn")?.addEventListener("click", toggleCart);

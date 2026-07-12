@@ -43,9 +43,12 @@ jobs:
         working-directory: mobile/android
         run: ./gradlew assembleDebug
 
+      - name: Rename APK
+        run: cp mobile/android/app/build/outputs/apk/debug/app-debug.apk mobile/android/app/build/outputs/apk/debug/TokoYakin-POS.apk
+
       - name: Release APK
         uses: softprops/action-gh-release@v2
         with:
-          files: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          files: mobile/android/app/build/outputs/apk/debug/TokoYakin-POS.apk
           name: Toko Yakin POS ${{ github.ref_name }}
           generate_release_notes: true
