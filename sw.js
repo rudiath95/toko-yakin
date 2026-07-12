@@ -1,11 +1,11 @@
 const CACHE = 'toko-yakin-v2';
 const ASSETS = [
-  '/',
-  '/index.html',
-  '/dist/output.css',
-  '/favicon.ico',
-  '/manifest.json',
-  '/xlsx.full.min.js'
+  './',
+  'index.html',
+  'dist/output.css',
+  'favicon.ico',
+  'manifest.json',
+  'xlsx.full.min.js'
 ];
 
 self.addEventListener('install', e => {
