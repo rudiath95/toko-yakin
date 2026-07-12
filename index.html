@@ -238,7 +238,7 @@
         <table class="w-full text-sm border-collapse">
           <thead class="bg-gray-700/60 sticky top-0 z-10 backdrop-blur-sm">
             <tr class="text-left text-gray-200 font-semibold text-xs uppercase tracking-wider">
-              <th class="px-2 py-2.5 text-center w-6">#</th>
+              <th id="cartCountHeader" class="px-2 py-2.5 text-center w-6">#</th>
               <th class="px-2 py-2.5 hidden md:table-cell">Barcode</th>
               <th class="px-2 py-2.5">Name</th>
               <th class="px-2 py-2.5 text-center">Qty</th>
@@ -839,6 +839,7 @@
       const cartTbody = document.getElementById("cart");
       const emptyMsg = document.getElementById("emptyCartMsg");
       const badge = document.getElementById("cartCountBadge");
+      const countHeader = document.getElementById("cartCountHeader");
       if (!cartTbody) return;
       cartTbody.innerHTML = "";
       let overallTotal = 0;
@@ -846,6 +847,7 @@
         badge.textContent = cart.length;
         badge.classList.toggle("hidden", cart.length === 0);
       }
+      if (countHeader) countHeader.textContent = cart.length || "#";
       if (cart.length === 0) {
         if (emptyMsg) emptyMsg.classList.remove("hidden");
         document.getElementById("total").textContent = `Rp. 0.00`;
