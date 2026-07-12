@@ -646,6 +646,7 @@
                 showTemporaryToast(`➕ Added ${qty}x ${prod.name} to cart`);
               }
               popup.classList.add('hidden');
+              document.getElementById("productSearchInput")?.select();
             });
           });
         });
@@ -848,6 +849,7 @@
       if (cart.length === 0) {
         if (emptyMsg) emptyMsg.classList.remove("hidden");
         document.getElementById("total").textContent = `Rp. 0.00`;
+        hitungKembalian();
         saveCart();
         updateAllAddButtons();
         return;
@@ -1510,6 +1512,30 @@
         showTemporaryToast("⏳ Loading products, please wait...");
         return;
       }
+      if (layoutMode === "thumbnail") {
+        const grid = document.getElementById("productGrid");
+        if (!grid) return;
+        const cards = Array.from(grid.querySelectorAll(".product-thumb"));
+        if (cards.length === 0) {
+          showTemporaryToast("⚠️ No matching products. Adjust your search.");
+          return;
+        }
+        const firstCard = cards[0];
+        const incBtn = firstCard.querySelector(".add-inc-btn");
+        const addBtn = firstCard.querySelector(".add-btn");
+        const nameEl = firstCard.querySelector(".line-clamp-2");
+        const productName = nameEl ? nameEl.innerText : "item";
+        if (incBtn) {
+          incBtn.click();
+          showTemporaryToast(`✨ [ENTER] +1 "${productName}"`);
+        } else if (addBtn) {
+          addBtn.click();
+          showTemporaryToast(`✨ [ENTER] Added "${productName}" to cart`);
+        } else {
+          showTemporaryToast("❌ Could not add item, action missing.");
+        }
+        return;
+      }
       const tbody = document.getElementById("productTable");
       if (!tbody) return;
       const rows = Array.from(tbody.querySelectorAll("tr.product-row"));
@@ -1958,6 +1984,7 @@
         if (confirm("Clear all items from cart?")) {
           clearCart();
           showTemporaryToast("🗑️ Cart cleared");
+          setTimeout(() => document.getElementById("productSearchInput")?.select(), 50);
         }
       });
 
