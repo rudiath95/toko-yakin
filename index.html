@@ -199,11 +199,15 @@
   <div id="cartPanel" class="fixed top-0 right-0 w-full md:w-[40%] h-full bg-gray-800/95 backdrop-blur-sm border-l border-gray-700 shadow-2xl flex flex-col z-30 translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
     <div class="px-3 md:px-5 pt-6 pb-3 border-b border-gray-700/80">
       <h2 class="text-xl font-bold flex items-center gap-2">
-        <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg class="w-5 h-5 text-blue-400 hidden md:inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 6M17 13l1.5 6M9 21h6M12 15v6" />
         </svg>
-        Shopping Cart
+        <span class="hidden md:inline">Shopping Cart</span>
         <div class="ml-auto flex items-center gap-1">
+          <button id="customProductBtn" class="text-xs font-medium text-white bg-green-700 hover:bg-green-600 px-2 py-1 rounded-md transition" title="Add custom product">
+            <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+            <span class="mobile-hidden">Custom</span>
+          </button>
           <button id="exportCartBtn" class="text-xs font-medium text-gray-300 hover:text-white bg-gray-700/50 hover:bg-gray-600 px-2 py-1 rounded-md transition" title="Export cart to clipboard">
             <svg class="w-5 h-5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
             <span class="mobile-hidden">Export</span>
@@ -295,6 +299,32 @@
       </div>
       <div id="savedCartsList" class="divide-y divide-gray-700/60">
         <div class="text-center py-8 text-gray-500 text-sm">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- custom product modal -->
+  <div id="customProductModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center transition-opacity duration-200">
+    <div class="bg-gray-800 rounded-xl w-[calc(100%-2rem)] md:w-[70%] mx-4 border border-gray-700 shadow-2xl">
+      <div class="flex items-center justify-between p-4 border-b border-gray-700">
+        <h3 class="text-lg font-bold flex items-center gap-2">
+          <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+          Custom Product
+        </h3>
+        <button id="closeCustomProductModal" class="text-gray-400 hover:text-white text-xl leading-none p-1">&times;</button>
+      </div>
+      <div class="p-4 space-y-4">
+        <div>
+          <label for="customProductName" class="block text-sm font-medium text-gray-300 mb-1">Product Name</label>
+          <input type="text" id="customProductName" class="w-full bg-gray-700/80 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500 placeholder-gray-500" placeholder="e.g. Custom Service">
+        </div>
+        <div>
+          <label for="customProductSubtotal" class="block text-sm font-medium text-gray-300 mb-1">Subtotal (Rp)</label>
+          <input type="number" id="customProductSubtotal" class="w-full bg-gray-700/80 text-white px-3 py-2 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-yellow-500 placeholder-gray-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none" placeholder="0" min="0" value="0" inputmode="numeric">
+        </div>
+        <div class="pt-2">
+          <button id="confirmCustomProduct" class="w-full bg-green-700 hover:bg-green-600 text-white font-semibold py-2 rounded-lg transition">Add to Cart</button>
+        </div>
       </div>
     </div>
   </div>
@@ -695,6 +725,49 @@
       renderCart();
     }
 
+    // ---------- ADD CUSTOM PRODUCT (name + subtotal) ----------
+    function addCustomProduct(name, subtotal) {
+      const id = "CUSTOM-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
+      cart.push({
+        barcode: id,
+        name: name,
+        singlePrice: subtotal,
+        tiers: [],
+        qty: 1,
+        type: "custom"
+      });
+      renderCart();
+    }
+
+    // ---------- CUSTOM PRODUCT MODAL ----------
+    function openCustomProductModal() {
+      document.getElementById("customProductName").value = "";
+      document.getElementById("customProductSubtotal").value = "0";
+      document.getElementById("customProductModal").classList.remove("hidden");
+      setTimeout(() => document.getElementById("customProductName").focus(), 100);
+    }
+
+    function closeCustomProductModal() {
+      document.getElementById("customProductModal").classList.add("hidden");
+    }
+
+    function confirmCustomProduct() {
+      const name = document.getElementById("customProductName").value.trim();
+      const subtotal = parseFloat(document.getElementById("customProductSubtotal").value) || 0;
+      if (!name) {
+        alert("Please enter a product name.");
+        return;
+      }
+      if (subtotal <= 0) {
+        alert("Please enter a valid subtotal.");
+        return;
+      }
+      addCustomProduct(name, subtotal);
+      closeCustomProductModal();
+      document.getElementById("productSearchInput")?.select();
+      showTemporaryToast(`➕ Added custom product "${name}" (Rp. ${subtotal.toFixed(2)}) to cart`);
+    }
+
     // ---------- UPDATE ADD BUTTONS (sync with cart) ----------
     function updateAllAddButtons() {
       document.querySelectorAll('.add-btn-container').forEach(container => {
@@ -881,7 +954,7 @@
           <td class="px-1 py-2.5 text-center w-6">
             <span class="drag-handle text-gray-400 text-lg leading-none select-none" title="Drag to reorder">⋮</span>
           </td>
-          <td class="px-2 py-2.5 font-mono text-xs text-gray-300 hidden md:table-cell">${escapeHtml(item.barcode)}</td>
+          <td class="px-2 py-2.5 font-mono text-xs text-gray-300 hidden md:table-cell">${item.type === 'custom' ? '<span class="text-yellow-400">Custom</span>' : escapeHtml(item.barcode)}</td>
           <td class="px-2 py-2.5 font-medium text-gray-200">${escapeHtml(item.name)}</td>
           <td class="px-2 py-2.5 text-center">
             <div class="inline-flex items-center gap-1 bg-gray-700/50 rounded-lg shadow-inner">
@@ -2072,6 +2145,18 @@
       document.getElementById("closeSavedCartsModal")?.addEventListener("click", closeSavedCartsModal);
       document.getElementById("savedCartsModal")?.addEventListener("click", (e) => {
         if (e.target === e.currentTarget) closeSavedCartsModal();
+      });
+      document.getElementById("customProductBtn")?.addEventListener("click", openCustomProductModal);
+      document.getElementById("closeCustomProductModal")?.addEventListener("click", closeCustomProductModal);
+      document.getElementById("customProductModal")?.addEventListener("click", (e) => {
+        if (e.target === e.currentTarget) closeCustomProductModal();
+      });
+      document.getElementById("confirmCustomProduct")?.addEventListener("click", confirmCustomProduct);
+      document.getElementById("customProductName")?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") document.getElementById("customProductSubtotal")?.focus();
+      });
+      document.getElementById("customProductSubtotal")?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") confirmCustomProduct();
       });
       document.addEventListener("click", (e) => {
         const popup = document.getElementById('qtySuggestPopup');
