@@ -1,11 +1,21 @@
-const CACHE = 'toko-yakin-v2';
+const CACHE = 'toko-yakin-v4';
 const ASSETS = [
   './',
   'index.html',
   'dist/output.css',
   'favicon.ico',
   'manifest.json',
-  'xlsx.full.min.js'
+  'vendor/xlsx.full.min.js',
+  'vendor/vue.global.prod.js',
+  'src/db.js',
+  'src/pricing.js',
+  'src/store.js',
+  'src/app.js',
+  'src/components/QuantitySuggest.js',
+  'src/components/ProductBrowser.js',
+  'src/components/CartPanel.js',
+  'src/components/SavedCartsModal.js',
+  'src/components/CustomProductModal.js'
 ];
 
 self.addEventListener('install', e => {
