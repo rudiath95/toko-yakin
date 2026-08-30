@@ -289,15 +289,19 @@
 
   <!-- saved carts modal -->
   <div id="savedCartsModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center transition-opacity duration-200">
-    <div class="bg-gray-800 rounded-xl w-full max-w-lg max-h-[70vh] overflow-y-auto mx-4 border border-gray-700 shadow-2xl">
-      <div class="flex items-center justify-between p-4 border-b border-gray-700 sticky top-0 bg-gray-800 z-10 rounded-t-xl">
+    <div class="bg-gray-800 rounded-xl w-full max-w-lg max-h-[70vh] flex flex-col overflow-hidden mx-4 border border-gray-700 shadow-2xl">
+      <div class="flex items-center justify-between p-4 border-b border-gray-700 shrink-0 rounded-t-xl bg-gray-800 z-10">
         <h3 class="text-lg font-bold flex items-center gap-2">
           <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
           Saved Carts
         </h3>
         <button id="closeSavedCartsModal" class="text-gray-400 hover:text-white text-xl leading-none p-1">&times;</button>
       </div>
-      <div id="savedCartsList" class="divide-y divide-gray-700/60">
+      <div class="flex shrink-0">
+        <button id="savedCartsTab" class="flex-1 py-2.5 text-sm font-semibold transition border-b-2 border-blue-400 text-blue-300">Saved</button>
+        <button id="autosavedCartsTab" class="flex-1 py-2.5 text-sm font-semibold transition border-b-2 border-transparent text-gray-400 hover:text-gray-200">Autosaved</button>
+      </div>
+      <div id="savedCartsList" class="divide-y divide-gray-700/60 overflow-y-auto">
         <div class="text-center py-8 text-gray-500 text-sm">Loading...</div>
       </div>
     </div>
@@ -365,6 +369,12 @@
     let allProductBarcodes = [];
     let scrollObserver = null;
     let isLoadingMore = false;
+
+    const AUTOSAVE_INTERVAL = 30000;
+    const AUTOSAVE_MAX_SLOTS = 100;
+    let savedCartsTab = "saved";            // "saved" | "autosaved"
+    let lastAutosaveId = null;
+    let lastAutosaveFingerprint = "";
 
     const GOOGLE_SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQNgrO1HT1fanpNDiFtL9RQazcVeDJ4M1RuxJx-I9tBk_ycFqYUoDj8I6ZCnQKBIwxBRHjnhP_0_Kge/pub?output=xlsx";
 
@@ -1203,6 +1213,7 @@
       const modal = document.getElementById("savedCartsModal");
       if (!modal) return;
       modal.classList.remove("hidden");
+      updateSavedCartsTabs();
       renderSavedCartsList();
     }
 
@@ -1212,7 +1223,24 @@
       modal.classList.add("hidden");
     }
 
+    function updateSavedCartsTabs() {
+      const active = "border-blue-400 text-blue-300";
+      const inactive = "border-transparent text-gray-400 hover:text-gray-200";
+      const savedTab = document.getElementById("savedCartsTab");
+      const autoTab = document.getElementById("autosavedCartsTab");
+      if (savedTab) savedTab.className = `flex-1 py-2.5 text-sm font-semibold transition border-b-2 ${savedCartsTab === "saved" ? active : inactive}`;
+      if (autoTab) autoTab.className = `flex-1 py-2.5 text-sm font-semibold transition border-b-2 ${savedCartsTab === "autosaved" ? active : inactive}`;
+    }
+
     async function renderSavedCartsList() {
+      if (savedCartsTab === "autosaved") {
+        await renderAutosavedCartsList();
+      } else {
+        await renderSavedCartsTab();
+      }
+    }
+
+    async function renderSavedCartsTab() {
       const container = document.getElementById("savedCartsList");
       if (!container) return;
       const all = await dbGetAll();
@@ -1240,6 +1268,71 @@
       container.querySelectorAll(".delete-saved-btn").forEach(btn => {
         btn.addEventListener("click", () => deleteSavedCart(btn.dataset.id));
       });
+    }
+
+    async function renderAutosavedCartsList() {
+      const container = document.getElementById("savedCartsList");
+      if (!container) return;
+      const all = await dbGetAll();
+      const auto = all.filter(e => e.id && e.id.startsWith("autosave_"));
+      if (auto.length === 0) {
+        container.innerHTML = '<div class="text-center py-8 text-gray-500 text-sm">No autosaved carts yet</div>';
+        return;
+      }
+      auto.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      container.innerHTML = auto.map(e => `
+        <div class="flex items-center justify-between px-4 py-3 hover:bg-gray-700/40 transition">
+          <div class="min-w-0 flex-1">
+            <div class="font-semibold text-gray-200 truncate flex items-center gap-2">
+              <span class="text-[10px] bg-blue-800/60 text-blue-200 px-1.5 py-0.5 rounded uppercase">Auto</span>
+              ${escapeHtml(e.date || "")}
+            </div>
+            <div class="text-xs text-gray-400">${(e.items || []).length} item(s)${e.customer ? ` · ${escapeHtml(e.customer)}` : ""}</div>
+          </div>
+          <div class="flex items-center gap-1 ml-3">
+            <button class="load-saved-btn text-xs font-medium text-blue-300 hover:text-white bg-blue-700/50 hover:bg-blue-600 px-2.5 py-1.5 rounded-md transition" data-id="${escapeHtml(e.id)}">Load</button>
+            <button class="delete-saved-btn text-xs font-medium text-red-400 hover:text-white bg-red-700/50 hover:bg-red-600 px-2 py-1.5 rounded-md transition" data-id="${escapeHtml(e.id)}">&times;</button>
+          </div>
+        </div>
+      `).join("");
+      container.querySelectorAll(".load-saved-btn").forEach(btn => {
+        btn.addEventListener("click", () => loadSavedCart(btn.dataset.id));
+      });
+      container.querySelectorAll(".delete-saved-btn").forEach(btn => {
+        btn.addEventListener("click", () => deleteSavedCart(btn.dataset.id));
+      });
+    }
+
+    function formatCartTimestamp(ts) {
+      const d = new Date(ts);
+      const dateStr = d.toLocaleDateString("id-ID", { day: "2-digit", month: "2-digit", year: "numeric" });
+      const timeStr = d.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+      return dateStr + " " + timeStr;
+    }
+
+    async function autosaveCart() {
+      if (!cart || cart.length === 0) return;
+      const now = Date.now();
+      const customerName = (document.getElementById("customer")?.value || "").trim();
+      const items = [...cart];
+      const fingerprint = JSON.stringify(items.map(i => [i.type, i.barcode, i.qty, i.singlePrice]));
+
+      if (lastAutosaveId && lastAutosaveFingerprint === fingerprint) {
+        await dbPut({ id: lastAutosaveId, customer: customerName, date: formatCartTimestamp(now), items, autosave: true, updatedAt: now });
+        return;
+      }
+
+      const id = "autosave_" + now;
+      await dbPut({ id, customer: customerName, date: formatCartTimestamp(now), items, autosave: true, updatedAt: now });
+      lastAutosaveId = id;
+      lastAutosaveFingerprint = fingerprint;
+
+      const all = await dbGetAll();
+      const auto = all
+        .filter(e => e.id && e.id.startsWith("autosave_"))
+        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      const excess = auto.slice(AUTOSAVE_MAX_SLOTS);
+      for (const e of excess) await dbDelete(e.id);
     }
 
     function saveCart() {
@@ -2047,6 +2140,9 @@
       setupBulkToggle();
       await loadCart();
 
+      setInterval(autosaveCart, AUTOSAVE_INTERVAL);
+      autosaveCart();
+
       // Register service worker for offline support
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('sw.js').catch(e => {
@@ -2143,6 +2239,16 @@
       document.getElementById("saveCartBtn")?.addEventListener("click", saveNamedCart);
       document.getElementById("savedCartsBtn")?.addEventListener("click", openSavedCartsModal);
       document.getElementById("closeSavedCartsModal")?.addEventListener("click", closeSavedCartsModal);
+      document.getElementById("savedCartsTab")?.addEventListener("click", () => {
+        savedCartsTab = "saved";
+        updateSavedCartsTabs();
+        renderSavedCartsList();
+      });
+      document.getElementById("autosavedCartsTab")?.addEventListener("click", () => {
+        savedCartsTab = "autosaved";
+        updateSavedCartsTabs();
+        renderSavedCartsList();
+      });
       document.getElementById("savedCartsModal")?.addEventListener("click", (e) => {
         if (e.target === e.currentTarget) closeSavedCartsModal();
       });
