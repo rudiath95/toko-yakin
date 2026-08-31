@@ -97,7 +97,7 @@
         store.prefetchImages();
         this.$nextTick(function () {
           var input = document.querySelector('input[placeholder="Search by barcode or name..."]');
-          if (input) input.focus();
+          if (input) { input.focus(); input.select(); }
         });
       },
 

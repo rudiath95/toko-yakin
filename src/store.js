@@ -528,14 +528,6 @@
       var fingerprint = JSON.stringify(items.map(function (i) { return [i.type, i.barcode, i.qty, i.singlePrice]; }));
 
       if (S.lastAutosaveId && S.lastAutosaveFingerprint === fingerprint) {
-        await DB.put({
-          id: S.lastAutosaveId,
-          customer: customerName,
-          date: S.formatTimestamp(now),
-          items: items,
-          autosave: true,
-          updatedAt: now
-        });
         return;
       }
 

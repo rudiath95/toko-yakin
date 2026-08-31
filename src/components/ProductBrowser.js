@@ -260,16 +260,16 @@
       switchView(view) {
         if (store.isLoading) return;
         store.switchView(view);
-        this.$nextTick(() => this.$refs.searchInput && this.$refs.searchInput.focus());
+        this.$nextTick(() => { if (this.$refs.searchInput) { this.$refs.searchInput.focus(); this.$refs.searchInput.select(); } });
       },
       clearSearch() {
         store.searchTerm = "";
-        this.$nextTick(() => this.$refs.searchInput && this.$refs.searchInput.focus());
+        this.$nextTick(() => { if (this.$refs.searchInput) { this.$refs.searchInput.focus(); this.$refs.searchInput.select(); } });
       },
       focusSearch() {
         this.$nextTick(() => {
           var si = this.$refs.searchInput;
-          if (si && document.activeElement !== si) si.focus();
+          if (si && document.activeElement !== si) { si.focus(); si.select(); }
         });
       },
       onSearchEnter() {
@@ -283,7 +283,7 @@
         store.layoutMode = store.layoutMode === "list" ? "thumbnail" : "list";
         store.loadedCount = 0;
         store.loadNextBatch(this.filtered.length);
-        this.$nextTick(() => this.$refs.searchInput && this.$refs.searchInput.focus());
+        this.$nextTick(() => { if (this.$refs.searchInput) { this.$refs.searchInput.focus(); this.$refs.searchInput.select(); } });
       },
       rowClasses(barcode, prod) {
         var isKrt = prod && prod.type === "KRT";
@@ -329,7 +329,7 @@
         store.addToCart(prod, qty);
         store.qtyInputs[barcode] = 1;
         store.showToast("➕ Added " + qty + "x " + prod.name + " to cart");
-        this.$nextTick(() => this.$refs.searchInput && this.$refs.searchInput.focus());
+        this.$nextTick(() => { if (this.$refs.searchInput) { this.$refs.searchInput.focus(); this.$refs.searchInput.select(); } });
       },
       setupObserver() {
         if (this._obs) { this._obs.disconnect(); this._obs = null; }
