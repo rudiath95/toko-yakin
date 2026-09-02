@@ -6,7 +6,7 @@
     name: "CustomProductModal",
     template: `
       <div v-if="store.customModalOpen" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center transition-opacity duration-200" @click.self="close">
-        <div class="bg-gray-800 rounded-xl w-[calc(100%-2rem)] md:w-[70%] mx-4 border border-gray-700 shadow-2xl">
+        <div class="bg-gray-800 rounded-xl w-full max-w-lg mx-4 border border-gray-700 shadow-2xl">
           <div class="flex items-center justify-between p-4 border-b border-gray-700">
             <h3 class="text-lg font-bold flex items-center gap-2">
               <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
