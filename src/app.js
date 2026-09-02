@@ -21,6 +21,7 @@
 
         <saved-carts-modal></saved-carts-modal>
         <custom-product-modal></custom-product-modal>
+        <keyboard-shortcuts-modal></keyboard-shortcuts-modal>
         <quantity-suggest></quantity-suggest>
 
         <!-- mobile cart toggle button -->
@@ -44,6 +45,7 @@
       CartPanel: window.CartPanel,
       SavedCartsModal: window.SavedCartsModal,
       CustomProductModal: window.CustomProductModal,
+      KeyboardShortcutsModal: window.KeyboardShortcutsModal,
       QuantitySuggest: window.QuantitySuggest
     },
     mounted() {
@@ -102,24 +104,54 @@
       },
 
       handleKey(e) {
-        if (e.key === "Escape") {
-          if (store.cartOpen) store.cartOpen = false;
-          store.hideQtyPopup();
+        var pressed = [];
+        if (e.ctrlKey) pressed.push("Ctrl");
+        if (e.altKey) pressed.push("Alt");
+        if (e.shiftKey) pressed.push("Shift");
+        if (e.metaKey) pressed.push("Meta");
+        var k = e.key;
+        if (k === " ") k = "Space";
+        if (["Control", "Alt", "Shift", "Meta"].indexOf(e.key) === -1) pressed.push(k);
+        var combo = pressed.join("+");
+
+        function match(id) { return combo === store.getShortcutKey(id); }
+
+        if (match("closeModal")) {
+          if (store.shortcutsModalOpen) store.shortcutsModalOpen = false;
+          else if (store.customModalOpen) store.customModalOpen = false;
+          else if (store.savedCartsOpen) store.savedCartsOpen = false;
+          else if (store.qtyPopup.show) store.hideQtyPopup();
+          else if (store.cartOpen) store.cartOpen = false;
+          var input = document.querySelector('input[placeholder="Search by barcode or name..."]');
+          if (input) { input.focus(); input.select(); }
           return;
         }
-        if (e.altKey) {
-          var viewMap = { "1": "combined", "2": "biasa", "3": "grosir" };
-          var view = viewMap[e.key];
-          if (view) {
-            e.preventDefault();
-            store.switchView(view);
-          } else if (e.key === "4") {
-            e.preventDefault();
-            store.toggleOnlineMode();
-          } else if (e.key === "5") {
-            e.preventDefault();
-            store.syncSheet();
+        if (match("viewAll")) { e.preventDefault(); store.switchView("combined"); }
+        else if (match("viewBiasa")) { e.preventDefault(); store.switchView("biasa"); }
+        else if (match("viewGrosir")) { e.preventDefault(); store.switchView("grosir"); }
+        else if (match("toggleMode")) { e.preventDefault(); store.toggleOnlineMode(); }
+        else if (match("syncSheet")) { e.preventDefault(); store.syncSheet(); }
+        else if (match("customProd")) {
+          e.preventDefault();
+          store.customName = "";
+          store.customSubtotal = "";
+          store.customModalOpen = true;
+        }
+        else if (match("saveCart")) { e.preventDefault(); store.saveNamedCart(); }
+        else if (match("loadCart")) { e.preventDefault(); store.openSavedCarts(); }
+        else if (match("clearCart")) {
+          e.preventDefault();
+          if (store.cart.length > 0 && confirm("Clear all items from cart?")) {
+            store.clearCart();
+            store.showToast("Cart cleared");
+            var ci = document.querySelector('input[placeholder="Search by barcode or name..."]');
+            if (ci) { ci.focus(); ci.select(); }
           }
+        }
+        else if (match("focusCustomer")) {
+          e.preventDefault();
+          var custInput = document.getElementById("customer");
+          if (custInput) { custInput.focus(); custInput.select(); }
         }
       },
 

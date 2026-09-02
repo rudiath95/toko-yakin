@@ -12,6 +12,9 @@
           <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
             <h1 class="text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-100 to-gray-300 bg-clip-text text-transparent flex items-center gap-2">
               Toko Yakin
+              <button class="text-gray-400 hover:text-yellow-400 transition p-1 rounded-lg hover:bg-gray-700/50" title="Keyboard Shortcuts" @click="store.shortcutsModalOpen = true">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+              </button>
               <a href="https://github.com/rudiath95/toko-yakin/releases/latest/download/TokoYakin-POS.apk"
                  class="desktop-hidden inline-flex items-center gap-1 px-3 py-1 text-sm font-semibold rounded-md bg-green-700 hover:bg-green-600 text-white shadow transition"
                  target="_blank" title="Download Android APK">
@@ -21,10 +24,10 @@
             </h1>
             <!-- VIEW TOGGLE BUTTONS (Combined / Biasa / Grosir) -->
             <div class="bg-gray-800/60 border border-gray-700 rounded-xl p-1 shadow-md flex gap-1">
-              <button @click="switchView('combined')" :class="viewBtnClass('combined')" :disabled="store.isLoading">👥 All</button>
-              <button @click="switchView('biasa')" :class="viewBtnClass('biasa')" :disabled="store.isLoading">📄 Biasa</button>
-              <button @click="switchView('grosir')" :class="viewBtnClass('grosir')" :disabled="store.isLoading">📦 Grosir</button>
-              <button class="px-2.5 py-2 text-sm font-semibold rounded-lg transition-all duration-200 shadow-sm" :class="store.offlineMode ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'" :title="store.offlineMode ? 'Offline mode — tap for online' : 'Online mode — tap for offline'" @click="store.toggleOnlineMode()">{{ store.offlineMode ? '📴' : '🌐' }}</button>
+              <button @click="switchView('combined')" :class="viewBtnClass('combined')" :disabled="store.isLoading" :title="'All products (' + store.getShortcutKey('viewAll') + ')'">👥 All</button>
+              <button @click="switchView('biasa')" :class="viewBtnClass('biasa')" :disabled="store.isLoading" :title="'Biasa (' + store.getShortcutKey('viewBiasa') + ')'">📄 Biasa</button>
+              <button @click="switchView('grosir')" :class="viewBtnClass('grosir')" :disabled="store.isLoading" :title="'Grosir (' + store.getShortcutKey('viewGrosir') + ')'">📦 Grosir</button>
+              <button class="px-2.5 py-2 text-sm font-semibold rounded-lg transition-all duration-200 shadow-sm" :class="store.offlineMode ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'" :title="(store.offlineMode ? 'Offline mode — tap for online' : 'Online mode — tap for offline') + ' (' + store.getShortcutKey('toggleMode') + ')'" @click="store.toggleOnlineMode()">{{ store.offlineMode ? '📴' : '🌐' }}</button>
               <button class="inline-flex px-3 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-gray-700 text-gray-200 hover:bg-gray-600 items-center gap-1" title="Download latest spreadsheet from Google Sheets" @click="store.syncSheet()">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                 Sync
@@ -233,6 +236,7 @@
         if (!target || !target.closest) return;
         if (!target.closest("button")) return;
         if (target.closest("input, textarea, select")) return;
+        if (target.closest("[data-no-search-focus]")) return;
         this.focusSearch();
       };
       document.addEventListener("click", this._onDocClick, true);

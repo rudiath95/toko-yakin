@@ -36,6 +36,7 @@
     customModalOpen: false,
     customName: "",
     customSubtotal: "",
+    shortcutsModalOpen: false,
     qtyPopup: { show: false, x: 0, y: 0, list: [], anchor: null, barcode: null, popupEl: null },
     toast: "",
     isMobile: typeof window !== "undefined" ? window.innerWidth < 768 : false,
@@ -468,6 +469,52 @@
       S.uangPembeli = "";
     },
 
+    // ================= SHORTCUTS =================
+    defaultShortcuts: [
+      { id: "viewAll",     label: "Switch to All",       key: "Alt+1" },
+      { id: "viewBiasa",   label: "Switch to Biasa",     key: "Alt+2" },
+      { id: "viewGrosir",  label: "Switch to Grosir",    key: "Alt+3" },
+      { id: "toggleMode",  label: "Toggle Online/Offline", key: "Alt+4" },
+      { id: "syncSheet",   label: "Sync Sheet",          key: "Alt+5" },
+      { id: "customProd",  label: "Add Custom Product",  key: "Alt+6" },
+      { id: "saveCart",    label: "Save Cart",           key: "Alt+7" },
+      { id: "loadCart",    label: "Load/Browse Carts",   key: "Alt+8" },
+      { id: "clearCart",   label: "Clear Cart",          key: "Alt+9" },
+      { id: "focusCustomer", label: "Focus Customer",    key: "Alt+0" },
+      { id: "closeModal",  label: "Close Modal/Panel",   key: "Escape" }
+    ],
+    customShortcuts: [],
+
+    loadShortcuts() {
+      try {
+        var raw = localStorage.getItem("toko-shortcuts");
+        if (raw) {
+          var parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            S.customShortcuts = parsed;
+            return;
+          }
+        }
+      } catch (e) { /* ignore */ }
+      S.customShortcuts = S.defaultShortcuts.map(function (d) { return { id: d.id, label: d.label, key: d.key }; });
+    },
+
+    saveShortcuts() {
+      localStorage.setItem("toko-shortcuts", JSON.stringify(S.customShortcuts));
+    },
+
+    resetShortcuts() {
+      S.customShortcuts = S.defaultShortcuts.map(function (d) { return { id: d.id, label: d.label, key: d.key }; });
+      S.saveShortcuts();
+    },
+
+    getShortcutKey(id) {
+      var found = S.customShortcuts.find(function (s) { return s.id === id; });
+      if (found) return found.key;
+      var def = S.defaultShortcuts.find(function (s) { return s.id === id; });
+      return def ? def.key : "";
+    },
+
     // ================= SAVED CARTS =================
     saveNamedCart() {
       var name = (S.customer || "").trim();
@@ -557,6 +604,7 @@
     },
 
     async loadInitialCart() {
+      S.loadShortcuts();
       var data = await DB.get("current-cart");
       if (!data) {
         var saved = localStorage.getItem("toko-cart");

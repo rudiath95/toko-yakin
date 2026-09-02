@@ -12,6 +12,7 @@ A Point of Sale system for Toko Yakin — supports retail (eceran) and wholesale
 - Online/offline mode with Google Sheets sync
 - Offline support via Service Worker
 - PWA-ready (can be installed on mobile browser)
+- Customizable keyboard shortcuts (click the book icon next to the title to view/edit)
 
 ## Mobile APK
 
@@ -49,6 +50,26 @@ npm run build:css
 # Watch CSS
 npm run dev:css
 ```
+
+## Keyboard Shortcuts
+
+Click the book icon next to the title to view and customize shortcuts. Default shortcuts:
+
+| Shortcut | Action |
+|----------|--------|
+| `Alt+1` | Switch to All products |
+| `Alt+2` | Switch to Biasa |
+| `Alt+3` | Switch to Grosir |
+| `Alt+4` | Toggle online/offline mode |
+| `Alt+5` | Sync sheet from Google Sheets |
+| `Alt+6` | Add custom product |
+| `Alt+7` | Save cart |
+| `Alt+8` | Load/browse saved carts |
+| `Alt+9` | Clear cart |
+| `Alt+0` | Focus customer input |
+| `Escape` | Close any open modal/panel |
+
+Shortcuts are customizable — uncheck "Read-only" in the modal to edit key bindings. Custom shortcuts are saved to `localStorage`.
 
 ## Data Source
 

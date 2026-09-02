@@ -49,8 +49,14 @@
     data() {
       return { localName: "", localSubtotal: "" };
     },
-    mounted() {
-      this.$nextTick(() => this.$refs.nameInput && this.$refs.nameInput.focus());
+    watch: {
+      "store.customModalOpen": function (val) {
+        if (val) {
+          this.localName = "";
+          this.localSubtotal = "";
+          this.$nextTick(() => this.$refs.nameInput && this.$refs.nameInput.focus());
+        }
+      }
     },
     methods: {
       focusSubtotal() {
@@ -67,6 +73,10 @@
         store.addCustomProduct(name, subtotal);
         store.customModalOpen = false;
         store.showToast("➕ Added custom product \"" + name + "\" (Rp. " + subtotal.toFixed(2) + ") to cart");
+        this.$nextTick(function () {
+          var input = document.querySelector('input[placeholder="Search by barcode or name..."]');
+          if (input) { input.focus(); input.select(); }
+        });
       }
     }
   };
