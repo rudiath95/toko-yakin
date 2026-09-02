@@ -27,7 +27,10 @@
               <button @click="switchView('combined')" :class="viewBtnClass('combined')" :disabled="store.isLoading" :title="'All products (' + store.getShortcutKey('viewAll') + ')'">👥 All</button>
               <button @click="switchView('biasa')" :class="viewBtnClass('biasa')" :disabled="store.isLoading" :title="'Biasa (' + store.getShortcutKey('viewBiasa') + ')'">📄 Biasa</button>
               <button @click="switchView('grosir')" :class="viewBtnClass('grosir')" :disabled="store.isLoading" :title="'Grosir (' + store.getShortcutKey('viewGrosir') + ')'">📦 Grosir</button>
-              <button class="px-2.5 py-2 text-sm font-semibold rounded-lg transition-all duration-200 shadow-sm" :class="store.offlineMode ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'" :title="(store.offlineMode ? 'Offline mode — tap for online' : 'Online mode — tap for offline') + ' (' + store.getShortcutKey('toggleMode') + ')'" @click="store.toggleOnlineMode()">{{ store.offlineMode ? '📴' : '🌐' }}</button>
+              <button class="px-2.5 py-2 text-sm font-semibold rounded-lg transition-all duration-200 shadow-sm inline-flex items-center gap-1" :class="store.offlineMode ? 'bg-red-600 text-white' : 'bg-blue-600 text-white'" :title="(store.offlineMode ? 'Offline mode — tap for online' : 'Online mode — tap for offline') + ' (' + store.getShortcutKey('toggleMode') + ')'" @click="store.toggleOnlineMode()">
+                {{ store.offlineMode ? '📴' : '🌐' }}
+                <span v-if="store.offlineMode" class="text-[10px] font-bold uppercase tracking-wider animate-pulse">Offline</span>
+              </button>
               <button class="inline-flex px-3 py-2 text-sm font-semibold rounded-lg transition-all duration-200 bg-gray-700 text-gray-200 hover:bg-gray-600 items-center gap-1" title="Download latest spreadsheet from Google Sheets" @click="store.syncSheet()">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
                 Sync

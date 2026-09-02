@@ -8,11 +8,6 @@
     name: "App",
     template: `
       <div>
-        <!-- offline banner -->
-        <div v-if="store.offlineMode" class="fixed top-0 left-0 right-0 z-50 bg-red-600/90 backdrop-blur-sm text-white text-center text-xs font-semibold py-1.5 tracking-wide shadow-lg">
-          📴 OFFLINE MODE — using cached data
-        </div>
-
         <product-browser ref="browser"></product-browser>
         <cart-panel></cart-panel>
 
