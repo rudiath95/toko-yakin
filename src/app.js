@@ -148,6 +148,11 @@
           var custInput = document.getElementById("customer");
           if (custInput) { custInput.focus(); custInput.select(); }
         }
+        else if (match("focusSearch")) {
+          e.preventDefault();
+          var searchInput = document.querySelector('input[placeholder="Search by barcode or name..."]');
+          if (searchInput) { searchInput.focus(); searchInput.select(); }
+        }
       },
 
       handleDocClick(e) {

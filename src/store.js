@@ -210,7 +210,6 @@
           imageUrl: (primary && primary.imageUrl) || ""
         };
       });
-      S.searchTerm = "";
       S.qtyInputs = {};
       S.resetProductView();
     },
@@ -218,7 +217,6 @@
     renderSheetView(sheetName) {
       S.viewMode = sheetName.toLowerCase();
       S.products = S.allProducts[sheetName] || {};
-      S.searchTerm = "";
       S.qtyInputs = {};
       S.resetProductView();
     },
@@ -481,6 +479,7 @@
       { id: "loadCart",    label: "Load/Browse Carts",   key: "Alt+8" },
       { id: "clearCart",   label: "Clear Cart",          key: "Alt+9" },
       { id: "focusCustomer", label: "Focus Customer",    key: "Alt+0" },
+      { id: "focusSearch",  label: "Focus Search",       key: "Alt+q" },
       { id: "closeModal",  label: "Close Modal/Panel",   key: "Escape" }
     ],
     customShortcuts: [],
@@ -492,6 +491,11 @@
           var parsed = JSON.parse(raw);
           if (Array.isArray(parsed) && parsed.length > 0) {
             S.customShortcuts = parsed;
+            S.defaultShortcuts.forEach(function (d) {
+              if (!S.customShortcuts.find(function (s) { return s.id === d.id; })) {
+                S.customShortcuts.push({ id: d.id, label: d.label, key: d.key });
+              }
+            });
             return;
           }
         }

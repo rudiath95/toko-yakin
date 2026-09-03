@@ -281,7 +281,7 @@
       },
       onSearchEnter() {
         store.addFirstVisibleProduct(this.filtered[0]);
-        store.searchTerm = "";
+        this.$nextTick(() => { var si = this.$refs.searchInput; if (si) { si.focus(); si.select(); } });
       },
       toggleBulkColumns() {
         store.showBulkColumns = !store.showBulkColumns;
