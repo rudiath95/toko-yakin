@@ -4,7 +4,7 @@
   "scripts": {
     "build:css": "tailwindcss -i ./src/input.css -o ./dist/output.css --minify",
     "dev:css": "tailwindcss -i ./src/input.css -o ./dist/output.css --watch",
-    "start": "node start-server.js"
+    "start": "npm run build:css && node start-server.js"
   },
   "devDependencies": {
     "http-server": "^14.1.1",
