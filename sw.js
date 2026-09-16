@@ -1,4 +1,4 @@
-const CACHE = 'toko-yakin-v4';
+const CACHE = 'toko-yakin-v5';
 const ASSETS = [
   './',
   'index.html',

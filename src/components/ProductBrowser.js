@@ -7,7 +7,7 @@
   window.ProductBrowser = {
     name: "ProductBrowser",
     template: `
-      <div class="md:mr-[40%]">
+      <div :style="browserStyle">
         <div class="p-6 pb-12">
           <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
             <h1 class="text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-100 to-gray-300 bg-clip-text text-transparent flex items-center gap-2">
@@ -189,6 +189,9 @@
     },
 
     computed: {
+      browserStyle() {
+        return store.isMobile ? {} : { marginRight: store.cartWidth + "%" };
+      },
       filtered() {
         var term = (store.searchTerm || "").trim().toLowerCase();
         var keys = Object.keys(store.products);

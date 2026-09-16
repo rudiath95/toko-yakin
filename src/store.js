@@ -21,6 +21,7 @@
     searchTerm: "",
     showBulkColumns: false,
     layoutMode: "list",        // "list" | "thumbnail"
+    cartWidth: 40,             // desktop cart width in % (25..60)
     cartOpen: false,
     offlineMode: false,
     useGoogleSource: true,
@@ -609,6 +610,16 @@
 
     async loadInitialCart() {
       S.loadShortcuts();
+      try {
+        var cw = localStorage.getItem("toko-cart-width");
+        var maxWidth = S.isMobile ? 100 : 60;
+        if (cw) {
+          var parsedWidth = parseFloat(cw);
+          if (!isNaN(parsedWidth)) S.cartWidth = Math.min(maxWidth, Math.max(25, parsedWidth));
+        } else {
+          S.cartWidth = maxWidth;
+        }
+      } catch (e) { /* ignore */ }
       var data = await DB.get("current-cart");
       if (!data) {
         var saved = localStorage.getItem("toko-cart");
@@ -832,6 +843,12 @@
     function () {
       clearTimeout(_debounceTimer);
       _debounceTimer = setTimeout(function () { store.persistCurrentCart(); }, 300);
+    }
+  );
+  V.watch(
+    function () { return store.cartWidth; },
+    function (v) {
+      try { localStorage.setItem("toko-cart-width", String(v)); } catch (e) { /* ignore */ }
     }
   );
 })();

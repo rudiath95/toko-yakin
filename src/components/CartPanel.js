@@ -6,9 +6,28 @@
     name: "CartPanel",
     template: `
       <div :class="[
-        'fixed top-0 right-0 w-full md:w-[40%] h-full bg-gray-800/95 backdrop-blur-sm border-l border-gray-700 shadow-2xl flex flex-col z-30 transition-transform duration-300 ease-in-out',
+        'fixed top-0 right-0 w-full h-full bg-gray-800/95 backdrop-blur-sm border-l border-gray-700 shadow-2xl flex flex-col z-30 transition-transform duration-300 ease-in-out',
         store.cartOpen ? 'translate-x-0' : 'translate-x-full md:translate-x-0'
-      ]">
+      ]" :style="cartStyle">
+        <!-- drag handle: full-height divider strip to resize cart width -->
+        <div
+          class="cart-resizer hidden md:block group absolute top-0 left-0 z-40 h-full w-2.5 cursor-col-resize bg-gray-500 hover:bg-blue-500/80 border-r border-gray-600 transition-colors"
+          title="Drag to resize cart"
+          @pointerdown="startResize($event)"
+          @mousedown="startResize($event)"
+          @touchstart="startResize($event)"
+        >
+          <div class="absolute inset-y-0 left-1/2 -translate-x-1/2 w-[3px] bg-gray-200/60 group-hover:bg-white transition-colors"></div>
+          <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-10 rounded-full bg-gray-800/90 border border-gray-500 flex items-center justify-center shadow-md group-hover:border-blue-400 group-hover:bg-blue-700 transition-colors">
+            <div class="flex flex-col gap-1 items-center">
+              <span class="block w-0.5 h-0.5 rounded-full bg-gray-200"></span>
+              <span class="block w-0.5 h-0.5 rounded-full bg-gray-200"></span>
+              <span class="block w-0.5 h-0.5 rounded-full bg-gray-200"></span>
+              <span class="block w-0.5 h-0.5 rounded-full bg-gray-200"></span>
+              <span class="block w-0.5 h-0.5 rounded-full bg-gray-200"></span>
+            </div>
+          </div>
+        </div>
         <div class="px-3 md:px-5 pt-6 pb-3 border-b border-gray-700/80">
           <h2 class="text-xl font-bold flex items-center gap-2">
             <svg class="w-5 h-5 text-blue-400 hidden md:inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -152,6 +171,9 @@
     },
 
     computed: {
+      cartStyle() {
+        return store.isMobile ? { width: "100%" } : { width: store.cartWidth + "%" };
+      },
       cartTotal() {
         var t = 0;
         store.cart.forEach(function (item) {
@@ -207,7 +229,43 @@
       onDragEnd() {
         this.dragOver = null;
         this.dragFrom = null;
+      },
+      startResize(event) {
+        if (this._resizing) return;
+        this._resizing = true;
+        var self = this;
+        var startX = event.clientX != null ? event.clientX : (event.touches && event.touches[0] ? event.touches[0].clientX : 0);
+        var startWidth = store.cartWidth;
+        if (event.preventDefault) event.preventDefault();
+        document.body.style.cursor = "col-resize";
+        document.body.style.userSelect = "none";
+        var maxWidth = store.isMobile ? 100 : 60;
+        var pos = function (e) {
+          return e.clientX != null ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+        };
+        var moves = ["pointermove", "mousemove", "touchmove"];
+        var ups = ["pointerup", "mouseup", "touchend", "touchcancel"];
+        var onMove = function (e) {
+          var newPx = (startWidth / 100) * window.innerWidth + (startX - pos(e));
+          var pct = Math.max(25, Math.min(maxWidth, (newPx / window.innerWidth) * 100));
+          store.cartWidth = Math.round(pct);
+        };
+        var cleanup = function () {
+          if (!self._resizing) return;
+          self._resizing = false;
+          document.body.style.cursor = "";
+          document.body.style.userSelect = "";
+          moves.forEach(function (n) { window.removeEventListener(n, onMove); });
+          ups.forEach(function (n) { window.removeEventListener(n, cleanup); });
+          self._resizeCleanup = null;
+        };
+        self._resizeCleanup = cleanup;
+        moves.forEach(function (n) { window.addEventListener(n, onMove, { passive: true }); });
+        ups.forEach(function (n) { window.addEventListener(n, cleanup); });
       }
+    },
+    beforeUnmount() {
+      if (this._resizeCleanup) this._resizeCleanup();
     }
   };
 })();
