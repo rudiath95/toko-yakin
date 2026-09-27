@@ -13,6 +13,7 @@
   var S = {
     // ---- data ----
     cart: [],
+    lastAdded: null,           // { barcode, seq } of the cart item just added/updated
     customer: "",
     uangPembeli: "",
     products: {},              // current view: barcode -> product
@@ -404,6 +405,20 @@
       return item ? item.qty : 0;
     },
 
+    markLastAdded(barcode) {
+      if (!barcode) return;
+      S._lastAddedSeq = (S._lastAddedSeq || 0) + 1;
+      S.lastAdded = { barcode: barcode, seq: S._lastAddedSeq };
+    },
+
+    clearLastAdded() {
+      S.lastAdded = null;
+    },
+
+    clearLastAddedIf(barcode) {
+      if (S.lastAdded && S.lastAdded.barcode === barcode) S.lastAdded = null;
+    },
+
     addToCart(productData, qty) {
       qty = parseInt(qty, 10) || 1;
       var existingIndex = S.cart.findIndex(function (i) { return i.barcode === productData.barcode; });
@@ -420,6 +435,7 @@
           type: productData.type || ""
         });
       }
+      S.markLastAdded(productData.barcode);
     },
 
     addCustomProduct(name, subtotal) {
@@ -432,11 +448,15 @@
         qty: 1,
         type: "custom"
       });
+      S.markLastAdded(id);
     },
 
     cartInc(barcode) {
       var idx = S.cart.findIndex(function (i) { return i.barcode === barcode; });
-      if (idx !== -1) S.cart[idx].qty++;
+      if (idx !== -1) {
+        S.cart[idx].qty++;
+        S.markLastAdded(barcode);
+      }
     },
 
     cartDec(barcode) {
@@ -447,11 +467,13 @@
       } else {
         S.cart[idx].qty--;
       }
+      S.clearLastAddedIf(barcode);
     },
 
     cartRemove(barcode) {
       var idx = S.cart.findIndex(function (i) { return i.barcode === barcode; });
       if (idx !== -1) S.cart.splice(idx, 1);
+      S.clearLastAddedIf(barcode);
     },
 
     reorderCart(fromId, toId) {
@@ -466,6 +488,7 @@
       S.cart = [];
       S.customer = "";
       S.uangPembeli = "";
+      S.clearLastAdded();
     },
 
     // ================= SHORTCUTS =================
@@ -544,6 +567,7 @@
       if (!data || !data.items) { S.showToast("⚠️ Cart not found"); return; }
       S.cart = S.snapshot(data.items);
       S.customer = data.customer || "";
+      S.clearLastAdded();
       S.closeSavedCarts();
       S.showToast("📋 Loaded cart for " + (data.customer || "unknown"));
     },
@@ -633,6 +657,7 @@
       if (data) {
         S.cart = S.snapshot(data.items);
         S.customer = data.customer || "";
+        S.clearLastAdded();
       }
     },
 

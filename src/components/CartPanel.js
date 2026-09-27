@@ -2,6 +2,8 @@
 (function () {
   "use strict";
 
+  var CART_HIGHLIGHT_MS = 1600;
+
   window.CartPanel = {
     name: "CartPanel",
     template: `
@@ -68,10 +70,10 @@
           </h2>
         </div>
 
-        <div class="flex-1 overflow-y-auto px-0 md:px-4 py-3 cart-scroll">
+        <div class="flex-1 overflow-y-auto px-0 md:px-4 py-3 cart-scroll" ref="cartScroll">
           <div class="overflow-x-auto">
             <table class="w-full text-sm border-collapse">
-              <thead class="bg-gray-700/60 sticky top-0 z-10 backdrop-blur-sm">
+              <thead class="bg-gray-700/60 sticky top-0 z-10 backdrop-blur-sm" ref="cartHead">
                 <tr class="text-left text-gray-200 font-semibold text-xs uppercase tracking-wider">
                   <th class="px-2 py-2.5 text-center w-6">#</th>
                   <th class="px-2 py-2.5 hidden md:table-cell">Barcode</th>
@@ -87,8 +89,13 @@
                 <tr
                   v-for="(item, idx) in store.cart"
                   :key="item.barcode"
+                  :data-barcode="item.barcode"
                   class="border-b border-gray-700/50 hover:bg-gray-700/30 transition"
-                  :class="{ dragging: dragFrom === item.barcode, 'drag-over': dragOver === item.barcode }"
+                  :class="{
+                    dragging: dragFrom === item.barcode,
+                    'drag-over': dragOver === item.barcode,
+                    'cart-highlight': highlightBarcode === item.barcode
+                  }"
                   draggable="true"
                   @dragstart="onDragStart(item, $event)"
                   @dragover.prevent="onDragOver(item)"
@@ -167,7 +174,7 @@
     `,
 
     data() {
-      return { dragFrom: null, dragOver: null };
+      return { dragFrom: null, dragOver: null, highlightBarcode: "" };
     },
 
     computed: {
@@ -186,7 +193,43 @@
       }
     },
 
+    watch: {
+      "store.lastAdded": function (last) {
+        if (!last || !last.barcode) return;
+        this.highlightBarcode = last.barcode;
+        var self = this;
+        clearTimeout(this._highlightTimer);
+        this._highlightTimer = setTimeout(function () { self.clearHighlight(); }, CART_HIGHLIGHT_MS);
+        this.$nextTick(function () { self.scrollToBarcode(last.barcode); });
+      }
+    },
+
     methods: {
+      clearHighlight() {
+        this.highlightBarcode = "";
+      },
+      findRow(barcode) {
+        var rows = this.$el.querySelectorAll("tbody tr");
+        for (var i = 0; i < rows.length; i++) {
+          if (rows[i].getAttribute("data-barcode") === barcode) return rows[i];
+        }
+        return null;
+      },
+      scrollToBarcode(barcode) {
+        var row = this.findRow(barcode);
+        var container = this.$refs.cartScroll;
+        if (!row || !container) return;
+        var headerH = this.$refs.cartHead ? this.$refs.cartHead.offsetHeight : 0;
+        var top = container.scrollTop + (row.getBoundingClientRect().top - container.getBoundingClientRect().top) - headerH - 8;
+        var maxTop = Math.max(0, container.scrollHeight - container.clientHeight);
+        if (top > maxTop) top = maxTop;
+        if (top < 0) top = 0;
+        if (typeof container.scrollTo === "function") {
+          container.scrollTo({ top: top, behavior: "smooth" });
+        } else {
+          container.scrollTop = top;
+        }
+      },
       openCustomProduct() {
         store.customName = "";
         store.customSubtotal = "";
@@ -265,6 +308,7 @@
       }
     },
     beforeUnmount() {
+      clearTimeout(this._highlightTimer);
       if (this._resizeCleanup) this._resizeCleanup();
     }
   };
