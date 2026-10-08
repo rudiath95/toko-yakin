@@ -143,6 +143,7 @@
             if (ci) { ci.focus(); ci.select(); }
           }
         }
+        else if (match("reduceLastQty")) { e.preventDefault(); store.reduceLastAddedQty(); }
         else if (match("focusCustomer")) {
           e.preventDefault();
           var custInput = document.getElementById("customer");

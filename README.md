@@ -67,6 +67,7 @@ Click the book icon next to the title to view and customize shortcuts. Default s
 | `Alt+8` | Load/browse saved carts |
 | `Alt+9` | Clear cart |
 | `Alt+0` | Focus customer input |
+| `Alt+w` | Reduce latest cart item quantity |
 | `Escape` | Close any open modal/panel |
 
 Shortcuts are customizable — uncheck "Read-only" in the modal to edit key bindings. Custom shortcuts are saved to `localStorage`.

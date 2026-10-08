@@ -471,6 +471,16 @@
       S.clearLastAddedIf(barcode);
     },
 
+    reduceLastAddedQty() {
+      var item = null;
+      if (S.lastAdded) {
+        item = S.cart.find(function (i) { return i.barcode === S.lastAdded.barcode; });
+      }
+      if (!item && S.cart.length > 0) item = S.cart[S.cart.length - 1];
+      if (!item) { S.showToast("🛒 Cart is empty"); return; }
+      S.cartDec(item.barcode);
+    },
+
     cartRemove(barcode) {
       var idx = S.cart.findIndex(function (i) { return i.barcode === barcode; });
       if (idx !== -1) S.cart.splice(idx, 1);
@@ -503,6 +513,7 @@
       { id: "saveCart",    label: "Save Cart",           key: "Alt+7" },
       { id: "loadCart",    label: "Load/Browse Carts",   key: "Alt+8" },
       { id: "clearCart",   label: "Clear Cart",          key: "Alt+9" },
+      { id: "reduceLastQty", label: "Reduce Latest Cart Qty", key: "Alt+w" },
       { id: "focusCustomer", label: "Focus Customer",    key: "Alt+0" },
       { id: "focusSearch",  label: "Focus Search",       key: "Alt+q" },
       { id: "closeModal",  label: "Close Modal/Panel",   key: "Escape" }
