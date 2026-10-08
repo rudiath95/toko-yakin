@@ -438,14 +438,15 @@
       S.markLastAdded(productData.barcode);
     },
 
-    addCustomProduct(name, subtotal) {
+    addCustomProduct(name, subtotal, qty) {
+      qty = parseInt(qty, 10) || 1;
       var id = "CUSTOM-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
       S.cart.push({
         barcode: id,
         name: name,
         singlePrice: subtotal,
         tiers: [],
-        qty: 1,
+        qty: qty,
         type: "custom"
       });
       S.markLastAdded(id);
@@ -664,7 +665,12 @@
     // ================= EXPORT / IMPORT =================
     exportCart() {
       if (S.cart.length === 0) { S.showToast("⚠️ Cart is empty, nothing to export"); return; }
-      var lines = S.cart.map(function (item) { return item.barcode + ":" + item.qty; });
+      var lines = S.cart.map(function (item) {
+        if (item.type === "custom") {
+          return "custom:" + item.qty + ":" + item.singlePrice + ":" + encodeURIComponent(item.name || "");
+        }
+        return item.barcode + ":" + item.qty;
+      });
       var text = lines.join("\n");
       navigator.clipboard.writeText(text).then(function () {
         S.showToast("📋 Exported " + S.cart.length + " items to clipboard");
@@ -685,6 +691,24 @@
           var barcode = parts[0].trim();
           var qty = parseInt(parts[1].trim(), 10);
           if (!barcode || isNaN(qty) || qty < 1) { errors++; continue; }
+          if (barcode.toLowerCase() === "custom") {
+            var customPrice = parseFloat(parts[2]);
+            var customName = "";
+            try {
+              customName = parts.length > 3 ? decodeURIComponent(parts.slice(3).join(":")).trim() : "";
+            } catch (de) { customName = ""; }
+            if (!customName || isNaN(customPrice)) { errors++; continue; }
+            var existingCustom = S.cart.find(function (i) {
+              return i.type === "custom" && i.name === customName && i.singlePrice === customPrice;
+            });
+            if (existingCustom) {
+              existingCustom.qty += qty;
+            } else {
+              S.addCustomProduct(customName, customPrice, qty);
+            }
+            added++;
+            continue;
+          }
           var prod = S.products[barcode];
           if (!prod) {
             var found = null;
