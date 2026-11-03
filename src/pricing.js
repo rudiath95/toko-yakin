@@ -2,25 +2,26 @@
 (function () {
   "use strict";
 
-  // Given a single-unit price and tier list [{min, totalPrice}], compute the
-  // cheapest stacked breakdown: use best bulk packs first, remainder as singles.
+  // Given a single-unit price and tier list [{min, totalPrice}], apply the
+  // spreadsheet tiers by priority: highest bulk tier first, then lower tiers,
+  // and finally the normal single price for any remainder.
   function computeStackablePriceFromSnapshot(singlePrice, tiers, qty) {
     if (qty <= 0) return { total: 0, breakdown: [] };
     var remaining = qty;
     var total = 0;
     var breakdown = [];
 
-    var tiersWithEfficiency = (tiers || []).map(function (tier) {
+    var orderedTiers = (tiers || []).map(function (tier) {
       return {
         min: tier.min,
         totalPrice: tier.totalPrice,
         effUnit: tier.totalPrice / tier.min
       };
     });
-    tiersWithEfficiency.sort(function (a, b) { return a.effUnit - b.effUnit; });
+    orderedTiers.sort(function (a, b) { return b.min - a.min; });
 
-    for (var i = 0; i < tiersWithEfficiency.length; i++) {
-      var tier = tiersWithEfficiency[i];
+    for (var i = 0; i < orderedTiers.length; i++) {
+      var tier = orderedTiers[i];
       if (remaining >= tier.min) {
         var maxPacks = Math.floor(remaining / tier.min);
         if (maxPacks > 0) {
